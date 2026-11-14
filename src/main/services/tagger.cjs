@@ -21,13 +21,24 @@ const state = {
 };
 
 function modelDir() {
-  // 默认随仓库布局找，settings 可覆盖
-  const { getSetting } = require('./settingsStore.cjs');
-  const configured = getSetting('tagger.modelDir');
+  // 默认随仓库布局找，settings 可覆盖（settings 表 key/value，value 为 JSON）
+  const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get('tagger.modelDir');
+  let configured = null;
+  if (row) {
+    try {
+      configured = JSON.parse(row.value);
+    } catch {
+      configured = row.value;
+    }
+  }
   if (configured) return configured;
   const candidates = [
     path.join(appRoot(), 'models', 'illuTag', 'wd-swinv2-tagger-v3'),
     path.join(appRoot(), '..', 'models', 'illuTag', 'wd-swinv2-tagger-v3'),
+    // 打包版：models 不在 app.asar 里，按 exe 位置往上找（win-unpacked → v3.0 → release → app → 项目根）
+    path.join(path.dirname(process.execPath), '..', '..', '..', '..', 'models', 'illuTag', 'wd-swinv2-tagger-v3'),
+    // 兜底：exe 同级放 models（便携分发）
+    path.join(path.dirname(process.execPath), 'models', 'illuTag', 'wd-swinv2-tagger-v3'),
   ];
   const fs = require('node:fs');
   for (const dir of candidates) {

@@ -92,6 +92,68 @@ function extractPromptsFromJson(json) {
   return found;
 }
 
+/**
+ * ComfyUI API 格式解出正/负提示词：顺着采样器节点的 positive/negative 连接找到文本节点。
+ * @param {object} json  PNG tEXt 里的 prompt（API 格式）
+ * @returns {{positive:string, negative:string}}
+ */
+function extractComfyPrompts(json) {
+  const out = { positive: '', negative: '' };
+  if (!json || typeof json !== 'object' || Array.isArray(json)) return out;
+
+  const TEXT_KEYS = ['text', 'text_g', 'text_l', 'string', 'value', 'prompt'];
+  const CONCAT_KEYS = ['text1', 'text2', 'text3', 'text4'];
+  // 节点引用形如 ["38", 0] 或 [38, 0]，id 可能是字符串
+  const isRef = (v) => Array.isArray(v) && (typeof v[0] === 'number' || typeof v[0] === 'string');
+
+  const textOf = (id, depth = 0, seen = new Set()) => {
+    if (id == null || depth > 8 || seen.has(id)) return '';
+    const node = json[String(id)];
+    if (!node || typeof node !== 'object') return '';
+    seen.add(id);
+    const inputs = node.inputs || {};
+    for (const key of TEXT_KEYS) {
+      if (typeof inputs[key] === 'string' && inputs[key].trim()) return inputs[key];
+    }
+    // CR Text Concatenate 之类：text1/text2 是引用，按 separator 拼接
+    if (CONCAT_KEYS.some((k) => inputs[k] !== undefined)) {
+      const sep = typeof inputs.separator === 'string' ? inputs.separator : ' ';
+      const parts = [];
+      for (const key of CONCAT_KEYS) {
+        const v = inputs[key];
+        if (isRef(v)) {
+          const t = textOf(v[0], depth + 1, new Set(seen));
+          if (t) parts.push(t);
+        } else if (typeof v === 'string' && v.trim()) {
+          parts.push(v);
+        }
+      }
+      if (parts.length) return parts.join(sep);
+    }
+    // 条件可能先经过 ConditioningCombine / 其它节点：顺着引用继续找
+    for (const v of Object.values(inputs)) {
+      if (isRef(v)) {
+        const t = textOf(v[0], depth + 1, seen);
+        if (t) return t;
+      }
+    }
+    return '';
+  };
+
+  // 优先按采样器连接取；没有采样器时退回「节点里最长的文本 + 负向启发」
+  const samplers = Object.values(json).filter(
+    (n) => n && typeof n === 'object' && n.inputs
+      && (Array.isArray(n.inputs.positive) || Array.isArray(n.inputs.negative))
+  );
+  for (const node of samplers) {
+    const inputs = node.inputs;
+    const pos = Array.isArray(inputs.positive) ? textOf(inputs.positive[0]) : '';
+    const neg = Array.isArray(inputs.negative) ? textOf(inputs.negative[0]) : '';
+    if (pos || neg) return { positive: pos.trim(), negative: neg.trim() };
+  }
+  return out;
+}
+
 /* ------------------------------------------------------------------ *
  * 主入口
  * ------------------------------------------------------------------ */
@@ -194,8 +256,15 @@ async function readMetadata(buf) {
   // prompt 字段本身是 API JSON 的情况
   if (result.prompt && result.prompt.trim().startsWith('{')) {
     try {
-      const prompts = extractPromptsFromJson(JSON.parse(result.prompt));
+      const apiJson = JSON.parse(result.prompt);
+      const prompts = extractPromptsFromJson(apiJson);
       if (prompts.length > 0) result.prompt_parsed = [...new Set(prompts)].join('\n\n');
+      // ComfyUI 没有 A1111 parameters 时，按采样器连接取正/负提示词
+      if (!result.positive && !result.negative) {
+        const comfy = extractComfyPrompts(apiJson);
+        if (comfy.positive) result.positive = comfy.positive;
+        if (comfy.negative) result.negative = comfy.negative;
+      }
     } catch { /* ignore */ }
   } else if (result.prompt) {
     result.prompt_parsed = result.prompt;
@@ -216,4 +285,5 @@ module.exports = {
   readMetadataFromFile,
   parseA1111Parameters,
   extractPromptsFromJson,
+  extractComfyPrompts,
 };

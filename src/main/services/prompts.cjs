@@ -6,7 +6,7 @@ const imgs = require('../../core/db/imageRepository.cjs');
 const libs = require('../../core/db/libraryRepository.cjs');
 const meta = require('../../core/legacy/metadata.cjs');
 const loose = require('../../core/legacy/pngTextsLoose.cjs');
-const { parseA1111Parameters, extractPromptsFromJson } = require('../../core/legacy/metadataPrompts.cjs');
+const { parseA1111Parameters, extractPromptsFromJson, extractComfyPrompts } = require('../../core/legacy/metadataPrompts.cjs');
 const { resolveInLibrary } = require('../fs/paths.cjs');
 
 /**
@@ -45,7 +45,7 @@ async function readImagePrompt({ id } = {}) {
      VALUES (?, ?, ?, ?, ?, ?, ?, ?, 'meta', ?)`
   ).run(
     id,
-    info.positive || '',
+    info.positive || info.promptText || '',
     info.negative || '',
     (info.params && info.params.Model) || '',
     (info.params && info.params.Sampler) || '',
@@ -107,8 +107,12 @@ async function parseBig(fsp, absPath, size, ext) {
         promptText = texts.prompt;
         if (promptText.trim().startsWith('{')) {
           try {
-            const list = extractPromptsFromJson(JSON.parse(promptText));
-            promptText = [...new Set(list)].join('\n\n');
+            const apiJson = JSON.parse(promptText);
+            const list = extractPromptsFromJson(apiJson);
+            if (list.length) promptText = [...new Set(list)].join('\n\n');
+            const comfy = extractComfyPrompts(apiJson);
+            if (comfy.positive) positive = comfy.positive;
+            if (comfy.negative) negative = comfy.negative;
           } catch { /* 保留原文 */ }
         }
       }
