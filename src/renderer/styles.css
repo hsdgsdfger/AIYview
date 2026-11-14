@@ -106,25 +106,6 @@ button { font-family: inherit; }
 .tb-label { font-size: 12px; }
 .tb-label.spaced { margin-left: 10px; }
 
-.seg {
-  display: flex;
-  border: 1px solid var(--line);
-  border-radius: 7px;
-  overflow: hidden;
-}
-.seg button {
-  width: 30px;
-  height: 25px;
-  display: grid;
-  place-items: center;
-  background: transparent;
-  border: none;
-  color: var(--muted);
-  cursor: pointer;
-}
-.seg button.on { background: var(--panel2); color: var(--accent); }
-.seg button + button { border-left: 1px solid var(--line); }
-
 .stepper {
   display: flex;
   align-items: center;
@@ -301,7 +282,6 @@ button { font-family: inherit; }
   overflow: hidden;
   background: var(--panel2);
 }
-.thumb-box.uniform { aspect-ratio: 1 / 1; }
 .thumb-box img {
   width: 100%;
   height: 100%;

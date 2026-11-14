@@ -9,7 +9,7 @@ import { useStore } from '../store.jsx';
  * - 分级三态遮挡（遮罩/模糊/隐藏），点一下临时解除
  * - 瀑布流下按宽高比自然排版；网格下统一 1:1
  */
-export default function Thumb({ item, uniform, selected, onClick, onContext, onDouble }) {
+export default function Thumb({ item, selected, onClick, onContext, onDouble }) {
   const elRef = useRef(null);
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
@@ -46,8 +46,8 @@ export default function Thumb({ item, uniform, selected, onClick, onContext, onD
       title={item.file_name}
     >
       <div
-        className={`thumb-box ${uniform ? 'uniform' : ''} ${blocked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
-        style={uniform ? undefined : { aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}` }}
+        className={`thumb-box ${blocked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
+        style={{ aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}` }}
       >
         {url ? (
           <img

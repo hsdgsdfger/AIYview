@@ -18,7 +18,6 @@ export function StoreProvider({ children }) {
   const [loading, setLoading] = useState(false);
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(null);
-  const [preset, setPreset] = useState('waterfall');  // 'waterfall' | 'grid'
   const [columns, setColumns] = useState(4);          // 面板数
   const [sort, setSort] = useState('mtime');
   const [heartOnly, setHeartOnly] = useState(false);  // 收藏图片
@@ -247,13 +246,13 @@ export function StoreProvider({ children }) {
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, preset, columns, sort, heartOnly, untagged, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
-    setLibraryId, setFolder, setFolderSearch, setPreset, setColumns, setSort,
+    setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     setHeartOnly, setUntagged, setAgeMax, setNameLike, setTagFilter, setSelection,
     setOcclusion, loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, preset, columns, sort, heartOnly, untagged, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
     loadMore, actions, say]);
 

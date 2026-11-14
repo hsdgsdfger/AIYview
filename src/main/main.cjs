@@ -22,13 +22,22 @@ const SMOKE = process.argv.includes('--smoke');
 const SHOT = process.argv.includes('--shot');
 const IS_DEV = Boolean(DEV_SERVER_URL);
 
+// 无 TTY 启动时 stdout/stderr 管道可能随时断开，EPIPE 绝不能中断主进程
+process.stdout.on('error', () => {});
+process.stderr.on('error', () => {});
+
 /** 延迟到真正需要时才加载原生模块，窗口启动不依赖 better-sqlite3 的 ABI */
 function lazyDb() {
   return require('./db/open.cjs');
 }
 
 function log(line) {
-  process.stdout.write(`${line}\n`);
+  // 双击启动的打包版没有 stdout 管道，写入会抛 EPIPE → 必须吞掉，否则主进程直接崩
+  try {
+    if (process.stdout.writable) process.stdout.write(`${line}\n`);
+  } catch {
+    /* stdout 已断开，忽略 */
+  }
   if (SMOKE) {
     // GUI 进程重定向 stdout 会被 app.exit 截断，落盘一份供冒烟脚本验证
     try {

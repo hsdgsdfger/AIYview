@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 /** 顶栏：品牌 + 添加文件夹 + 布局/面板 + 设置 + 窗口控制（对应原版 YiZi view 头部） */
 export default function TopBar() {
   const {
-    preset, setPreset, columns, setColumns, scanning, actions, maximized, say,
+    columns, setColumns, scanning, actions, maximized, say,
   } = useStore();
 
   return (
@@ -20,21 +20,7 @@ export default function TopBar() {
       </button>
 
       <div className="topbar-center">
-        <span className="tb-label">布局：</span>
-        <div className="seg">
-          <button
-            className={preset === 'grid' ? 'on' : ''}
-            onClick={() => setPreset('grid')}
-            title="网格"
-          ><Icon name="grid" size={15} /></button>
-          <button
-            className={preset === 'waterfall' ? 'on' : ''}
-            onClick={() => setPreset('waterfall')}
-            title="瀑布流"
-          ><Icon name="waterfall" size={15} /></button>
-        </div>
-
-        <span className="tb-label spaced">面板：</span>
+        <span className="tb-label">面板：</span>
         <div className="stepper">
           <button className="stepper-btn" onClick={() => setColumns(Math.max(1, columns - 1))} title="减少分栏">−</button>
           <span className="stepper-val">{columns}</span>

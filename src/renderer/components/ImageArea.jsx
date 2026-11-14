@@ -10,7 +10,7 @@ import { setSizePref } from '../thumbBus.js';
  */
 export default function ImageArea({ onOpenViewer }) {
   const {
-    items, preset, columns, hasMore, loading, loadMore, selection, actions,
+    items, columns, hasMore, loading, loadMore, selection, actions,
     libraryId, libraries, folder, sort, setSort, nameLike, setNameLike, scanning, scanProgress,
   } = useStore();
   const scrollRef = useRef(null);
@@ -18,7 +18,7 @@ export default function ImageArea({ onOpenViewer }) {
   const [asc, setAsc] = useState(false);
 
   const library = libraries.find((l) => l.id === libraryId) || null;
-  if (typeof window !== "undefined") window.__yiziDebug = { items: items.length, hasMore, loading, libraryId, preset, columns, pick: typeof window.yizi.library.pick };
+  if (typeof window !== "undefined") window.__yiziDebug = { items: items.length, hasMore, loading, libraryId, columns, pick: typeof window.yizi.library.pick };
 
   const onScroll = useCallback(() => {
     const el = scrollRef.current;
@@ -65,15 +65,13 @@ export default function ImageArea({ onOpenViewer }) {
   const buckets = useMemo(() => {
     const cols = Array.from({ length: columns }, () => ({ items: [], h: 0 }));
     for (const item of items) {
-      const aspect = preset === 'grid'
-        ? 1
-        : (item.width && item.height ? item.width / item.height : 0.72);
+      const aspect = item.width && item.height ? item.width / item.height : 0.72;
       const target = cols.reduce((min, cur) => (cur.h < min.h ? cur : min), cols[0]);
       target.items.push(item);
       target.h += 1 / Math.min(Math.max(aspect, 0.45), 2.4);
     }
     return cols;
-  }, [items, columns, preset]);
+  }, [items, columns]);
 
   if (libraryId == null) {
     return (
@@ -122,7 +120,7 @@ export default function ImageArea({ onOpenViewer }) {
         </span>
       </div>
 
-      <div className={`canvas ${preset}`} ref={scrollRef} onScroll={onScroll}>
+      <div className="canvas" ref={scrollRef} onScroll={onScroll}>
         <div className="cols">
           {buckets.map((bucket, i) => (
             <div className="col" key={i}>
@@ -130,7 +128,6 @@ export default function ImageArea({ onOpenViewer }) {
                 <Thumb
                   key={item.id}
                   item={item}
-                  uniform={preset === 'grid'}
                   selected={selection.has(item.id)}
                   onClick={clickItem}
                   onDouble={() => onOpenViewer(item)}
