@@ -104,10 +104,7 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
               onDouble?.(item);
             }}
             title={isRevealed ? '点击恢复遮挡' : '点击显示'}
-          >
-            {!isRevealed && occlusion.mode !== 'blur' && <span>L{item.ageLevel} · 点击显示</span>}
-            {!isRevealed && occlusion.mode === 'blur' && <span>L{item.ageLevel}</span>}
-          </div>
+          />
         )}
 
         {item.rejected === 1 && <span className="badge reject">废</span>}
