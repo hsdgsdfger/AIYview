@@ -5,7 +5,11 @@
  */
 
 function normalizeRoot(p) {
-  return String(p || '').replace(/\\/g, '/').replace(/\/+$/, '');
+  return String(p || '')
+    .trim()
+    .replace(/\\/g, '/')
+    .replace(/\/+/g, '/')
+    .replace(/\/+$/, '');
 }
 
 /**
