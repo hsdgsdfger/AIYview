@@ -20,6 +20,7 @@ const CHANNELS = Object.freeze([
   'tag:run', 'tag:stop', 'tag:status', 'tag:import-dictionary', 'tag:get-or-create', 'tag:top',
   'delete:trash', 'delete:list', 'delete:restore', 'delete:sweep',
   'settings:get', 'settings:set', 'settings:all',
+  'app:log-path', 'app:log-open', 'log:renderer',
 ]);
 
 const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress', 'window:maximized']);

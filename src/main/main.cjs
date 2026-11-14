@@ -1,7 +1,13 @@
 'use strict';
 
+// 日志与崩溃兜底放在最前面：后续 require 阶段出错也能留下记录
 const path = require('node:path');
-const { app, BrowserWindow, ipcMain, session, protocol } = require('electron');
+const logger = require('./logger.cjs');
+logger.init();
+for (const stream of [process.stdout, process.stderr]) {
+  if (stream && typeof stream.on === 'function') stream.on('error', () => {});
+}
+const { app, BrowserWindow, ipcMain, session, protocol, shell } = require('electron');
 const { createMainWindow } = require('./window.cjs');
 const { applyNetworkPolicy } = require('./security.cjs');
 const { registerMediaProtocol } = require('./mediaProtocol.cjs');
@@ -22,9 +28,14 @@ const SMOKE = process.argv.includes('--smoke');
 const SHOT = process.argv.includes('--shot');
 const IS_DEV = Boolean(DEV_SERVER_URL);
 
-// 无 TTY 启动时 stdout/stderr 管道可能随时断开，EPIPE 绝不能中断主进程
-process.stdout.on('error', () => {});
-process.stderr.on('error', () => {});
+
+// 双击启动的 GUI 进程没有 stdout/stderr 流（可能是 undefined），
+// 直接 .on() 会在模块加载阶段抛 TypeError 让应用静默退出——必须判空。
+for (const stream of [process.stdout, process.stderr]) {
+  if (stream && typeof stream.on === 'function') {
+    stream.on('error', () => {}); // EPIPE 不能中断主进程
+  }
+}
 
 /** 延迟到真正需要时才加载原生模块，窗口启动不依赖 better-sqlite3 的 ABI */
 function lazyDb() {
@@ -32,12 +43,8 @@ function lazyDb() {
 }
 
 function log(line) {
-  // 双击启动的打包版没有 stdout 管道，写入会抛 EPIPE → 必须吞掉，否则主进程直接崩
-  try {
-    if (process.stdout.writable) process.stdout.write(`${line}\n`);
-  } catch {
-    /* stdout 已断开，忽略 */
-  }
+  // 统一走 logger：控制台（判空）+ 文件（<userData>/logs/app.log，自动滚动）
+  logger.info('app', line);
   if (SMOKE) {
     // GUI 进程重定向 stdout 会被 app.exit 截断，落盘一份供冒烟脚本验证
     try {
@@ -48,6 +55,22 @@ function log(line) {
       /* 尽力而为：日志落盘失败不影响主流程 */
     }
   }
+}
+
+/**
+ * 卡死看门狗：主进程事件循环被长任务堵住时（同步大查询、同步 IO），
+ * 心跳会明显延迟 —— 记 warn，事后能定位是哪个阶段卡住。
+ */
+function startWatchdog() {
+  let last = Date.now();
+  setInterval(() => {
+    const now = Date.now();
+    const lag = now - last - 5000;
+    if (lag > 1200) {
+      logger.warn('watchdog', `主进程事件循环阻塞约 ${lag}ms`, { heapMB: Math.round(process.memoryUsage().heapUsed / 1048576) });
+    }
+    last = now;
+  }, 5000).unref();
 }
 
 /** 主进程 → 渲染层广播 */
@@ -96,6 +119,21 @@ function registerIpc() {
     dev: IS_DEV,
   }));
 
+  ipcMain.handle('app:log-path', () => logger.getFile());
+  ipcMain.handle('app:log-open', () => {
+    try {
+      shell.showItemInFolder(logger.getFile());
+      return true;
+    } catch {
+      return false;
+    }
+  });
+  ipcMain.handle('log:renderer', (_event, payload = {}) => {
+    const level = payload.level === 'warn' ? 'warn' : 'error';
+    logger[level]('renderer', payload.message || '未知渲染层错误', payload.extra);
+    return true;
+  });
+
   ipcMain.handle('db:status', () => {
     try {
       const { probeDatabase } = lazyDb();
@@ -136,6 +174,16 @@ function bootstrap() {
   applyUiScale(win);
 
   win.webContents.on('did-finish-load', () => log('[boot] renderer loaded'));
+  win.webContents.on('did-fail-load', (_e, code, desc, url) => {
+    logger.error('window', '页面加载失败', { code, desc, url });
+  });
+  win.webContents.on('unresponsive', () => logger.error('window', '渲染进程无响应（界面会卡住）'));
+  win.webContents.on('responsive', () => logger.info('window', '渲染进程恢复响应'));
+  win.webContents.on('render-process-gone', (_e, details) => logger.error('window', '渲染进程退出', details));
+  win.webContents.on('preload-error', (_e, preloadPath, error) => {
+    logger.error('window', 'preload 抛错', { preloadPath, message: error && error.message });
+  });
+  app.on('child-process-gone', (_e, details) => logger.error('app', '子进程退出', details));
 
   if (SHOT) {
     win.webContents.once('did-finish-load', () => {
@@ -147,6 +195,11 @@ function bootstrap() {
             );
             log(`[click] ${c}`);
             await new Promise((r) => setTimeout(r, 500));
+          }
+          if (process.env.YIZI_ERRTEST) {
+            await win.webContents.executeJavaScript("setTimeout(() => { throw new Error('注入的渲染层错误'); }, 0)");
+            await new Promise((r) => setTimeout(r, 600));
+            log("[errtest] injected");
           }
           if (process.env.YIZI_ORDERTEST) {
             const r = await win.webContents.executeJavaScript(`
@@ -240,6 +293,17 @@ function bootstrap() {
 }
 
 log('[main] loaded, smoke=' + SMOKE);
+
+process.on('uncaughtException', (error) => {
+  log('[fatal] uncaught: ' + (error && error.stack ? error.stack : error));
+});
+process.on('unhandledRejection', (reason) => {
+  log('[fatal] rejection: ' + (reason && reason.stack ? reason.stack : reason));
+});
+
+logger.init();
+logger.info('boot', 'main.cjs loaded', { argv: process.argv.slice(1), electron: process.versions.electron });
+startWatchdog();
 
 if (!app.requestSingleInstanceLock()) {
   log('[main] single-instance lock NOT acquired, quitting');

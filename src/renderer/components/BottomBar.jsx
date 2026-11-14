@@ -68,6 +68,14 @@ export default function BottomBar() {
             onClick={() => (tagging ? actions.stopTagging() : actions.startTagging())}
             title="打标（只处理无元数据的图）"
           ><Icon name="refresh" size={14} className={tagging ? 'spin-icon' : ''} /></button>
+          <button
+            className="sb-toggle"
+            title="打开日志所在文件夹（排障用）"
+            onClick={async () => {
+              const r = await window.yizi.app['log-open']();
+              if (!r || !r.ok) window.yizi.app['log-path']();
+            }}
+          ><span style={{ fontSize: 11 }}>日志</span></button>
         </div>
       </footer>
     </>
