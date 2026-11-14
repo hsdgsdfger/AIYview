@@ -41,6 +41,14 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
   const isRevealed = revealed.has(item.id);
   const masked = hitThreshold && !isRevealed;
 
+  // 强度：模糊 6~30px，遮罩不透明度 0.55~0.97（隐藏方式不受影响）
+  const strength = Math.min(100, Math.max(20, occlusion.strength ?? 100));
+  const blurPx = Math.round(6 + (strength / 100) * 24);
+  const maskAlpha = (0.55 + (strength / 100) * 0.42).toFixed(2);
+  const maskStyle = occlusion.mode === 'mask' && !isRevealed
+    ? { background: `rgba(14, 16, 22, ${maskAlpha})` }
+    : undefined;
+
   const handleOverlayClick = (e) => {
     e.stopPropagation();
     // 切换显示/恢复遮挡，同时按正常规则选中
@@ -61,7 +69,7 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
     >
       <div
         className={`thumb-box ${masked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
-        style={{ aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}` }}
+        style={{ aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}`, '--occ-blur': `${blurPx}px` }}
       >
         {url ? (
           <img
@@ -97,7 +105,8 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
         {/* 遮挡层：命中阈值就常驻挂载；已显示时变透明，再点一下恢复遮挡 */}
         {hitThreshold && (
           <div
-            className={`occlude-mask ${occlusion.mode === 'hidden' ? 'hidden-mode' : ''} ${isRevealed ? 'revealed' : ''}`}
+            className={`occlude-mask mode-${occlusion.mode} ${isRevealed ? 'revealed' : ''}`}
+            style={maskStyle}
             onClick={handleOverlayClick}
             onDoubleClick={(e) => {
               e.stopPropagation();

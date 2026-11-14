@@ -29,7 +29,7 @@ export function StoreProvider({ children }) {
   const [tagFilter, setTagFilter] = useState(null);   // {id,name}
   const [tagList, setTagList] = useState([]);
   const [selection, setSelection] = useState(new Set());
-  const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2 });
+  const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2, strength: 100 });
   const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
   const [revealed, setRevealed] = useState(new Set());
   const [tagging, setTagging] = useState(null);
@@ -88,6 +88,11 @@ export function StoreProvider({ children }) {
     });
     window.yizi.settings.get({ key: 'shortcuts' }).then((r) => {
       if (r.ok && r.data && typeof r.data === 'object') setShortcuts({ ...DEFAULT_SHORTCUTS, ...r.data });
+    });
+    window.yizi.settings.get({ key: 'occlusion' }).then((r) => {
+      if (r.ok && r.data && typeof r.data === 'object') {
+        setOcclusion((prev) => ({ ...prev, ...r.data }));
+      }
     });
     window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
     return window.yizi.on('window:maximized', (v) => setMaximized(Boolean(v)));
@@ -295,7 +300,11 @@ export function StoreProvider({ children }) {
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
-    setOcclusionWithReset: (next) => { setRevealed(new Set()); setOcclusion(next); }, loadMore, actions, say,
+    setOcclusionWithReset: (next) => {
+      setRevealed(new Set());
+      setOcclusion(next);
+      window.yizi.settings.set({ key: 'occlusion', value: next });
+    }, loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, shortcuts, revealed, tagging, status, version, maximized,

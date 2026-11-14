@@ -293,7 +293,8 @@ button { font-family: inherit; }
 }
 .thumb:hover .thumb-box { outline: 1px solid var(--accent); outline-offset: -1px; }
 .thumb.selected .thumb-box { outline: 2px solid var(--accent); outline-offset: -2px; }
-.thumb.occluded .thumb-box img { filter: blur(14px) saturate(0.7); }
+/* 模糊方式：只糊图，不压色（放大一点防止模糊取样露边） */
+.thumb-box.occlude-blur img { filter: blur(var(--occ-blur, 18px)) saturate(0.8); transform: scale(1.08); }
 
 .thumb-placeholder {
   width: 100%; height: 100%;
@@ -327,12 +328,14 @@ button { font-family: inherit; }
   inset: 0;
   display: grid;
   place-items: center;
-  background: rgba(10, 12, 16, 0.72);
-  backdrop-filter: blur(2px);
   color: #cfd6e4;
   font-size: 11.5px;
+  /* 各方式只靠自己的背景区分，不再统一盖一层深色 */
+  background: transparent;
 }
-.occlude-mask.hidden-mode { background: var(--panel2); }
+.occlude-mask.mode-mask { background: rgba(14, 16, 22, 0.96); }
+.occlude-mask.mode-blur { background: rgba(10, 12, 16, 0.04); }
+.occlude-mask.mode-hidden { background: var(--panel2); }
 
 .badge {
   position: absolute;
@@ -758,6 +761,9 @@ button { font-family: inherit; }
 }
 .occl-opt:hover { border-color: var(--accent); color: var(--accent); }
 .occl-opt.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.occl-range { flex: 1; min-width: 108px; height: 18px; accent-color: var(--accent); }
+.occl-range:disabled { opacity: 0.4; }
+.occl-val { flex: 0 0 32px; text-align: right; font-size: 11px; color: var(--muted); }
 .occl-item {
   display: block;
   width: 100%;

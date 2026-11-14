@@ -330,6 +330,22 @@ function OcclusionMenu({ occlusion, setOcclusion }) {
             ))}
           </div>
 
+          <div className="occl-row">
+            <span className="occl-label">强度</span>
+            <input
+              type="range"
+              className="occl-range"
+              min={20}
+              max={100}
+              step={10}
+              value={occlusion.strength ?? 100}
+              onChange={(e) => setOcclusion({ ...occlusion, strength: Number(e.target.value) })}
+              disabled={occlusion.mode === 'hidden'}
+              title={occlusion.mode === 'hidden' ? '隐藏方式不用调节强度' : '模糊度 / 遮罩浓度'}
+            />
+            <span className="occl-val">{occlusion.strength ?? 100}%</span>
+          </div>
+
           <div className="settings-sep" />
 
           <div className="occl-row">
