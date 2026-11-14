@@ -154,7 +154,7 @@ if (!app.requestSingleInstanceLock()) {
       bootstrap();
     } catch (error) {
       log(`[boot] bootstrap failed: ${error.message}`);
-      if (error.stack) log(`[boot] at: ${error.stack.split('\n').slice(1, 30).join(' | ')}`);
+      if (error.stack) log(`[boot] at: ${error.stack.split('\n').slice(1, 8).join(' | ')}`);
       if (SMOKE) log('[smoke] bootstrap-failed');
       app.exit(1);
       return;
