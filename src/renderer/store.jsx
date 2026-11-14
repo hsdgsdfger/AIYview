@@ -250,7 +250,8 @@ export function StoreProvider({ children }) {
       const r = await run(window.yizi.tag.run({ libraryId }), '打标');
       setTagging(null);
       if (r) {
-        say(r.cancelled ? `打标中断 ${r.done}/${r.total}（可续跑）` : `打标完成：${r.tagged} 张`);
+        const failed = r.failed ? `，${r.failed} 张失败${r.firstError ? `（${r.firstError}）` : ''}` : '';
+        say(r.cancelled ? `打标中断 ${r.done}/${r.total}（可续跑）` : `打标完成：${r.tagged} 张${failed}`);
       }
     },
     async stopTagging() {

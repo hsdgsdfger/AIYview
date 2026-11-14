@@ -53,11 +53,12 @@ function appRoot() {
   return path.join(__dirname, '..', '..', '..');
 }
 
-function ensureSession() {
+async function ensureSession() {
   if (state.session) return state.session;
   const ort = require('onnxruntime-node');
   const dir = modelDir();
-  state.session = { ort, session: ort.InferenceSession.create(path.join(dir, 'model.onnx')) };
+  // InferenceSession.create 返回 Promise，必须 await，否则下游拿到 Promise 调 .run 会抛错
+  state.session = { ort, session: await ort.InferenceSession.create(path.join(dir, 'model.onnx')) };
   return state.session;
 }
 
@@ -89,6 +90,8 @@ async function runTagger({ libraryId, threshold = 0.35, topN = 24, batchSize = 8
   const sharp = require('sharp');
   let done = 0;
   let tagged = 0;
+  let failed = 0;
+  let firstError = null;
 
   try {
     for (const row of queue) {
@@ -140,8 +143,10 @@ async function runTagger({ libraryId, threshold = 0.35, topN = 24, batchSize = 8
         if (level != null) {
           imgs.setAge(db, [row.id], { level, source: 'meta', confidence: chosen.rating.prob });
         }
-} catch {
-        // 单张失败不中断任务
+} catch (err) {
+        // 单张失败不中断任务，但留第一条错误给调用方，避免整轮静默零标签
+        failed += 1;
+        if (!firstError) firstError = err && err.message ? err.message : String(err);
       }
 
       done += 1;
@@ -152,13 +157,13 @@ async function runTagger({ libraryId, threshold = 0.35, topN = 24, batchSize = 8
     }
   } finally {
     state.running = false;
-    const summary = { done, total: queue.length, tagged, cancelled: state.cancelled };
+    const summary = { done, total: queue.length, tagged, cancelled: state.cancelled, failed, firstError };
     broadcastEvent('tags-updated', { libraryId, ...summary });
     broadcastEvent('tag:progress', { libraryId, ...summary, finished: true });
     state.progress = null;
   }
 
-  return { done, total: queue.length, tagged, cancelled: state.cancelled };
+  return { done, total: queue.length, tagged, cancelled: state.cancelled, failed, firstError };
 }
 
 let broadcaster = null;
