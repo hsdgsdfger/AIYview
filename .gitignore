@@ -16,3 +16,6 @@ release/
 # 模型不进仓库（放 Release assets 或本地 models/）
 models/
 *.onnx
+
+# Electron ABI 原生副本（本地编译产物）
+.native/

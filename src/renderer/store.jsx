@@ -25,6 +25,10 @@ export function StoreProvider({ children }) {
   const [sort, setSort] = useState('mtime');
   const [status, setStatus] = useState('');
   const [version, setVersion] = useState(0); // browse:changed 触发重载
+  const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2 }); // M3 三态遮挡
+  const [revealed, setRevealed] = useState(new Set()); // C3 单图解除（会话内）
+  const [tagging, setTagging] = useState(null); // M4 {done,total,tagged}
+  const [tagFilter, setTagFilter] = useState(null); // {id, name}
 
   const stateRef = useRef({});
   stateRef.current = { libraryId, folder, cursor, filters, sort, loading, hasMore };
@@ -42,6 +46,13 @@ export function StoreProvider({ children }) {
     }
     return res.data;
   }, [say]);
+
+  /* 启动恢复主题 */
+  useEffect(() => {
+    window.yizi.settings.get({ key: 'theme' }).then((r) => {
+      if (r.ok && r.data) document.documentElement.setAttribute('data-theme', r.data);
+    });
+  }, []);
 
   /* 初始加载库列表 */
   useEffect(() => {
@@ -82,7 +93,7 @@ export function StoreProvider({ children }) {
         cursor: s.cursor,
         limit: 500,
         sort: s.sort,
-        filters: { ...s.filters, folder: s.folder || null },
+        filters: { ...s.filters, folder: s.folder || null, tagId: s.tagFilter ? s.tagFilter.id : null },
       });
       if (!res.ok) {
         say(res.error);
@@ -110,9 +121,17 @@ export function StoreProvider({ children }) {
   useEffect(() => {
     const offProgress = window.yizi.on('scan:progress', (p) => setScanProgress(p));
     const offChanged = window.yizi.on('browse:changed', () => setVersion((v) => v + 1));
+    const offTag = window.yizi.on('tag:progress', (p) => {
+      if (!p || p.finished) {
+        setTagging((cur) => (p && p.finished && p.cancelled ? { ...p, cancelled: true } : cur));
+        return;
+      }
+      setTagging(p);
+    });
     return () => {
       offProgress();
       offChanged();
+      offTag();
     };
   }, []);
 
@@ -167,14 +186,46 @@ export function StoreProvider({ children }) {
     clearSelection() {
       setSelection(new Set());
     },
+    reveal(id) {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        next.add(id);
+        return next;
+      });
+    },
+    conceal(id) {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
+    async startTagging() {
+      if (libraryId == null) return;
+      setTagging({ done: 0, total: 0, tagged: 0 });
+      const r = await run(window.yizi.tag.run({ libraryId }), '打标');
+      setTagging(null);
+      if (r) say(r.cancelled ? `打标已中断：${r.done}/${r.total}，新打标 ${r.tagged} 张（可续跑）` : `打标完成：${r.tagged} 张`);
+      setVersion((v) => v + 1);
+    },
+    async stopTagging() {
+      await run(window.yizi.tag.stop(), '停止打标');
+    },
+    async importDictionary() {
+      const r = await run(window.yizi.tag['import-dictionary']({}), '导入标签字典');
+      if (r) say(`字典导入：新增 ${r.inserted}，更新 ${r.updated}`);
+    },
   }), [libraryId, run, say]);
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, items, cursor, hasMore, loading,
     scanning, scanProgress, view, selection, filters, sort, status, version,
-    setLibraryId, setFolder, setView, setFilters, setSort, loadMore, actions, say,
+    occlusion, revealed, tagging, tagFilter,
+    setLibraryId, setFolder, setView, setFilters, setSort, setOcclusion, setTagFilter,
+    loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, items, cursor, hasMore, loading,
-    scanning, scanProgress, view, selection, filters, sort, status, version, loadMore, actions, say]);
+    scanning, scanProgress, view, selection, filters, sort, status, version,
+    occlusion, revealed, tagging, tagFilter, loadMore, actions, say]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
 }

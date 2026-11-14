@@ -14,6 +14,7 @@ const { registerPromptLibraryIpc } = require('./services/promptLibrary.cjs');
 const { registerTagIpc } = require('./services/tags.cjs');
 const { registerTrashIpc } = require('./services/trash.cjs');
 const { registerSettingsIpc } = require('./services/settings.cjs');
+const { registerTaggerIpc } = require('./services/tagger.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
@@ -26,6 +27,16 @@ function lazyDb() {
 
 function log(line) {
   process.stdout.write(`${line}\n`);
+  if (SMOKE) {
+    // GUI 进程重定向 stdout 会被 app.exit 截断，落盘一份供冒烟脚本验证
+    try {
+      const fs = require('node:fs');
+      fs.mkdirSync(app.getPath('userData'), { recursive: true });
+      fs.appendFileSync(path.join(app.getPath('userData'), 'smoke.log'), `${line}\n`);
+    } catch {
+      /* 尽力而为：日志落盘失败不影响主流程 */
+    }
+  }
 }
 
 /** 主进程 → 渲染层广播 */
@@ -64,6 +75,7 @@ function registerIpc() {
   registerTagIpc();
   registerTrashIpc();
   registerSettingsIpc();
+  registerTaggerIpc(broadcast);
 }
 
 function bootstrap() {
@@ -72,8 +84,11 @@ function bootstrap() {
     onBlocked: (url) => log(`[net-policy] blocked ${url}`),
   });
 
+  log("[boot] step: getDb");
   const db = getDb();
+  log("[boot] step: getDb ok");
   ensureMediaRoots(db);
+  log("[boot] step: media roots ok");
   registerMediaRoot(thumbnailsDir());
   registerMediaProtocol(protocol);
 
@@ -83,9 +98,15 @@ function bootstrap() {
   win.webContents.on('did-finish-load', () => log('[boot] renderer loaded'));
 
   if (SMOKE) {
+    try {
+      require('node:fs').rmSync(path.join(app.getPath('userData'), 'smoke.log'), { force: true });
+    } catch {
+      /* 清旧日志失败无所谓 */
+    }
     win.webContents.once('did-finish-load', () => {
       setTimeout(() => {
         try {
+          log('[smoke] start');
           const { probeDatabase } = lazyDb();
           const probe = probeDatabase(path.join(app.getPath('userData'), 'index.sqlite'));
           log(
@@ -113,7 +134,10 @@ function bootstrap() {
   return win;
 }
 
+log('[main] loaded, smoke=' + SMOKE);
+
 if (!app.requestSingleInstanceLock()) {
+  log('[main] single-instance lock NOT acquired, quitting');
   app.quit();
 } else {
   app.on('second-instance', () => {
@@ -126,11 +150,23 @@ if (!app.requestSingleInstanceLock()) {
 
   app.whenReady().then(() => {
     log(`[boot] electron ${process.versions.electron} node ${process.versions.node}`);
-    bootstrap();
+    try {
+      bootstrap();
+    } catch (error) {
+      log(`[boot] bootstrap failed: ${error.message}`);
+      if (error.stack) log(`[boot] at: ${error.stack.split('\n').slice(1, 30).join(' | ')}`);
+      if (SMOKE) log('[smoke] bootstrap-failed');
+      app.exit(1);
+      return;
+    }
 
     app.on('activate', () => {
       if (BrowserWindow.getAllWindows().length === 0) createMainWindow();
     });
+  }).catch((error) => {
+    log(`[boot] whenReady failed: ${error.message}`);
+    if (SMOKE) log('[smoke] bootstrap-failed');
+    app.exit(1);
   });
 
   app.on('window-all-closed', () => {

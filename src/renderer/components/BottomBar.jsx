@@ -1,12 +1,13 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store.jsx';
+import TagPanel from './TagPanel.jsx';
 
 /**
  * 底部操作条：选中集的批量操作（B4/B5）+ 最近删除（F4）+ 提示词库入口。
  */
 export default function BottomBar() {
   const { selection, actions, say } = useStore();
-  const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | null
+  const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | null
 
   const selectedIds = useMemo(() => [...selection], [selection]);
 
@@ -14,7 +15,8 @@ export default function BottomBar() {
 
   return (
     <>
-      {panel && <Panel name={panel} onClose={() => setPanel(null)} />}
+      {panel === 'tags' && <TagPanel onClose={() => setPanel(null)} />}
+      {panel && panel !== 'tags' && <Panel name={panel} onClose={() => setPanel(null)} />}
       <div className="bottom-bar">
         {selectedIds.length > 0 ? (
           <>
@@ -61,6 +63,7 @@ export default function BottomBar() {
         <span className="grow" />
         <button className="btn ghost" onClick={() => setPanel(panel === 'trash' ? null : 'trash')}>最近删除</button>
         <button className="btn ghost" onClick={() => setPanel(panel === 'prompts' ? null : 'prompts')}>提示词库</button>
+        <button className="btn ghost" onClick={() => setPanel(panel === 'tags' ? null : 'tags')}>标签</button>
       </div>
     </>
   );

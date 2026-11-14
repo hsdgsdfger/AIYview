@@ -16,11 +16,12 @@ const CHANNELS = Object.freeze([
   'thumb:get', 'thumb:cache-stats',
   'prompt:save', 'prompt:save-manual', 'prompt:list', 'prompt:get', 'prompt:update', 'prompt:remove',
   'tag:import-csv', 'tag:search', 'tag:suggest', 'tag:of-image', 'tag:attach', 'tag:detach',
+  'tag:run', 'tag:stop', 'tag:status', 'tag:import-dictionary', 'tag:get-or-create',
   'delete:trash', 'delete:list', 'delete:restore', 'delete:sweep',
   'settings:get', 'settings:set', 'settings:all',
 ]);
 
-const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated']);
+const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress']);
 
 async function invoke(channel, payload) {
   if (!CHANNELS.includes(channel)) {

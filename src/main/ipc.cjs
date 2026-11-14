@@ -9,7 +9,7 @@ const { ipcMain } = require('electron');
 const registered = new Set();
 
 function handle(channel, fn) {
-  if (!/^[a-z]+:[a-zA-Z]+$/.test(channel)) {
+  if (!/^[a-z]+:[a-zA-Z][a-zA-Z-]*$/.test(channel)) {
     throw new Error('IPC 通道命名必须是 domain:action: ' + channel);
   }
   if (registered.has(channel)) throw new Error('通道重复注册: ' + channel);

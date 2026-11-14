@@ -28,6 +28,7 @@ function registerTagIpc() {
   });
 
   handle('tag:detach', ({ imageId, tagId } = {}) => tags.detachTag(getDb(), imageId, tagId));
+  handle('tag:get-or-create', ({ name, nameZh } = {}) => ({ id: tags.getOrCreateTag(getDb(), name, { nameZh }) }));
 }
 
 /**

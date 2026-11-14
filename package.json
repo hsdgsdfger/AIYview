@@ -10,6 +10,7 @@
     "node": ">=22.12.0"
   },
   "scripts": {
+    "predev": "node scripts/prepare-electron-abi.mjs",
     "dev": "node scripts/dev.mjs",
     "build": "vite build && electron-builder --dir",
     "prebuild": "electron-rebuild -f -w better-sqlite3",
@@ -24,6 +25,7 @@
   "dependencies": {
     "better-sqlite3": "^12.4.1",
     "chokidar": "^5.0.0",
+    "onnxruntime-node": "^1.31.1",
     "react": "^19.2.0",
     "react-dom": "^19.2.0",
     "sharp": "^0.34.5"

@@ -5,6 +5,7 @@ export default function Toolbar() {
   const {
     libraryId, view, setView, filters, setFilters, sort, setSort,
     scanning, scanProgress, status, actions,
+    occlusion, setOcclusion, tagging, tagFilter, setTagFilter,
   } = useStore();
 
   return (
@@ -65,6 +66,20 @@ export default function Toolbar() {
             <option value="4">隐藏 ≥ l4</option>
           </select>
         </label>
+        <select
+          value={occlusion.mode}
+          onChange={(e) => setOcclusion({ ...occlusion, mode: e.target.value })}
+          title="分级遮挡方式"
+        >
+          <option value="mask">遮罩</option>
+          <option value="blur">模糊</option>
+          <option value="hidden">隐藏</option>
+        </select>
+        {tagFilter && (
+          <button className="btn primary" onClick={() => setTagFilter(null)}>
+            标签: {tagFilter.name} ✕
+          </button>
+        )}
         <select value={sort} onChange={(e) => setSort(e.target.value)}>
           <option value="mtime">按时间</option>
           <option value="name">按名称</option>
@@ -72,6 +87,15 @@ export default function Toolbar() {
       </div>
 
       <div className="tb-group right">
+        <button
+          className="btn ghost"
+          onClick={() => {
+            const rootEl = document.documentElement;
+            const light = rootEl.getAttribute('data-theme') === 'light';
+            rootEl.setAttribute('data-theme', light ? 'dark' : 'light');
+            window.yizi.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
+          }}
+        >主题</button>
         {scanning && scanProgress ? (
           <span className="scan-progress">
             {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
@@ -82,6 +106,12 @@ export default function Toolbar() {
           disabled={!libraryId || scanning}
           onClick={() => actions.scan()}
         >{scanning ? '扫描中…' : '扫描'}</button>
+                <button
+          className="btn"
+          disabled={!libraryId || tagging != null}
+          onClick={() => (tagging ? actions.stopTagging() : actions.startTagging())}
+          title="只处理无元数据的图，可中断续跑"
+        >{tagging ? '打标 ' + tagging.done + '/' + tagging.total + '（点击停止）' : '打标'}</button>
         {status && <span className="tb-status">{status}</span>}
       </div>
     </div>
