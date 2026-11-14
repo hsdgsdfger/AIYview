@@ -6,7 +6,7 @@ import Icon from './Icon.jsx';
 export default function Sidebar() {
   const {
     libraries, libraryId, folders, folder, folderSearch, setFolderSearch,
-    setFolder, heartOnly, setHeartOnly, untagged, setUntagged,
+    setFolder, heartOnly, setHeartOnly, untagged, setUntagged, rejectedOnly, setRejectedOnly,
     tagFilter, setTagFilter, tagList, actions, say,
   } = useStore();
   const [tagQuery, setTagQuery] = useState('');
@@ -74,11 +74,23 @@ export default function Sidebar() {
             className={`side-item ${heartOnly ? 'active' : ''}`}
             onClick={() => {
               setHeartOnly(!heartOnly);
-              if (!heartOnly) setUntagged(false);
+              if (!heartOnly) { setUntagged(false); setRejectedOnly(false); }
             }}
           >
             <Icon name="heart" size={15} className="side-ico heart" />
             <span className="side-text">收藏图片</span>
+          </button>
+
+          <button
+            className={`side-item ${rejectedOnly ? 'active' : ''}`}
+            onClick={() => {
+              setRejectedOnly(!rejectedOnly);
+              if (!rejectedOnly) { setHeartOnly(false); setUntagged(false); }
+            }}
+            title="只看标废的图（取消废标后自动离开此列表）"
+          >
+            <Icon name="x" size={15} className="side-ico" />
+            <span className="side-text">废标</span>
           </button>
         </div>
 

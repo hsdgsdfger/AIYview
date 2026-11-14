@@ -1,5 +1,6 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store.jsx';
+import Hearts from './Hearts.jsx';
 
 /**
  * 全屏查看器（A3）：缩放/平移、心数快捷键、废标、分级标记、两级提示词面板。
@@ -74,15 +75,17 @@ export default function Viewer({ item, onClose, onNav }) {
         </div>
 
         <div className="viewer-actions">
-          <span className="heart-row">
-            {[0, 1, 2, 3, 4, 5].map((n) => (
-              <button
-                key={n}
-                className={`heart ${item.heart === n ? 'on' : ''}`}
-                onClick={() => actions.setMarks([item.id], { heart: n })}
-                title={`${n} 心`}
-              >{n === 0 ? '♡0' : '♥'.repeat(n)}</button>
-            ))}
+          <span className="viewer-hearts">
+            <Hearts
+              value={item.heart || 0}
+              size={17}
+              onChange={(n) => actions.setMarks([item.id], { heart: n })}
+            />
+            <button
+              className="btn ghost tiny"
+              title="清除心数"
+              onClick={() => actions.setMarks([item.id], { heart: 0 })}
+            >清除</button>
           </span>
           <button
             className={`btn ${item.rejected ? 'danger' : 'ghost'}`}

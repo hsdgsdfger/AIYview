@@ -17,8 +17,8 @@ function isAllowedNavigation(targetUrl) {
 
 function createMainWindow() {
   const win = new BrowserWindow({
-    width: 1360,
-    height: 860,
+    width: 1500,
+    height: 940,
     minWidth: 1000,
     minHeight: 620,
     show: false,

@@ -1,23 +1,23 @@
-import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef } from 'react';
 import { useStore } from '../store.jsx';
 import Thumb from './Thumb.jsx';
+import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
-import { setSizePref } from '../thumbBus.js';
+import { setSizePref, getSizePref, getBusStats } from '../thumbBus.js';
 
 /**
- * 主视图：路径条 + 瀑布流/网格。
- * 瀑布流用 CSS 多栏（视觉与原版一致）；分页每次 400 张，DOM 有上限。
+ * 主视图：顶部操作条（选中批处理）+ 瀑布流。
+ * 瀑布流用 JS 分列（按预估高度分给最矮列），Ctrl+滚轮缩放列数。
  */
 export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
-    libraryId, libraries, folder, sort, setSort, nameLike, setNameLike, scanning, scanProgress,
+    libraryId, libraries, folder, scanning, scanProgress,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
-  const [asc, setAsc] = useState(false);
 
-  /* Alt + 滚轮 = 缩放瀑布流列数（原生监听才能可靠 preventDefault） */
+  /* Ctrl + 滚轮 = 缩放瀑布流列数（原生监听才能可靠 preventDefault） */
   const columnsRef = useRef(columns);
   columnsRef.current = columns;
   const setColumnsRef = useRef(setColumns);
@@ -26,11 +26,11 @@ export default function ImageArea({ onOpenViewer }) {
     const el = scrollRef.current;
     if (!el) return undefined;
     const onWheel = (e) => {
-      if (!e.altKey) return;
+      if (!e.ctrlKey) return;
       e.preventDefault();
       const next = Math.min(8, Math.max(1, columnsRef.current + (e.deltaY > 0 ? 1 : -1)));
       if (next !== columnsRef.current) {
-        columnsRef.current = next; // 同一帧连续滚轮也不丢步
+        columnsRef.current = next;
         setColumnsRef.current(next);
       }
     };
@@ -38,29 +38,25 @@ export default function ImageArea({ onOpenViewer }) {
     return () => el.removeEventListener('wheel', onWheel);
   }, [libraryId]);
 
-  const library = libraries.find((l) => l.id === libraryId) || null;
-  if (typeof window !== "undefined") window.__yiziDebug = { items: items.length, hasMore, loading, libraryId, columns, pick: typeof window.yizi.library.pick };
-
-  const onScroll = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    if (el.scrollTop + el.clientHeight > el.scrollHeight - 800) loadMore();
-  }, [loadMore]);
-
   /* 按「每格实际像素」选缩略图档位：高清屏/大格子用 1024，否则 600（与原版一致） */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
     const pick = () => {
-      const dpr = window.devicePixelRatio || 1;
-      const cell = (el.clientWidth - 16) / Math.max(1, columns) * dpr;
-      setSizePref(cell > 760 ? 'md' : 'sm');
+      const cell = (el.clientWidth - 16) / Math.max(1, columns);
+      setSizePref(cell > 780 ? 'md' : 'sm');
     };
     pick();
     const ro = new ResizeObserver(pick);
     ro.observe(el);
     return () => ro.disconnect();
   }, [columns]);
+
+  const onScroll = useCallback(() => {
+    const el = scrollRef.current;
+    if (!el) return;
+    if (el.scrollTop + el.clientHeight > el.scrollHeight - 800) loadMore();
+  }, [loadMore]);
 
   const clickItem = useCallback((item, e) => {
     if (e.shiftKey && lastIdxRef.current >= 0) {
@@ -76,11 +72,23 @@ export default function ImageArea({ onOpenViewer }) {
     lastIdxRef.current = item.id;
   }, [items, actions]);
 
-  const pathLabel = useMemo(() => {
-    if (!library) return '';
-    const root = library.root_path.replace(/\//g, '\\');
-    return folder ? `${root}\\${folder.replace(/\//g, '\\')}` : root;
-  }, [library, folder]);
+  const library = libraries.find((l) => l.id === libraryId) || null;
+
+  // 排障快照（--shot 时主进程会读取）
+  if (typeof window !== 'undefined') {
+    window.__yiziDebug = {
+      items: items.length,
+      hasMore,
+      loading,
+      libraryId,
+      columns,
+      selected: selection.size,
+      pick: typeof window.yizi.library.pick,
+      pref: getSizePref(),
+      bus: getBusStats(),
+      cellPx: Math.round(((document.querySelector(".canvas") || {}).clientWidth || 0) / Math.max(1, columns)),
+    };
+  }
 
   /* 真瀑布流：按预估高度把图分给当前最矮的一列 */
   const buckets = useMemo(() => {
@@ -93,6 +101,8 @@ export default function ImageArea({ onOpenViewer }) {
     }
     return cols;
   }, [items, columns]);
+
+  const selectedIds = useMemo(() => [...selection], [selection]);
 
   if (libraryId == null) {
     return (
@@ -107,37 +117,55 @@ export default function ImageArea({ onOpenViewer }) {
 
   return (
     <section className="content">
-      <div className="pathbar">
-        <button className="icon-btn" title="返回上一层" disabled>
-          <Icon name="back" size={16} />
-        </button>
-        <Icon name="folder" size={15} className="path-ico" />
-        <span className="path-text" title={pathLabel}>{pathLabel}</span>
+      <div className="actionbar">
+        {selectedIds.length === 0 ? (
+          <span className="ab-muted">未选择</span>
+        ) : (
+          <>
+            <span className="ab-count">已选 {selectedIds.length} 张</span>
 
-        {scanning && scanProgress && (
-          <span className="path-scan">
-            {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
-          </span>
+            <Hearts
+              value={0}
+              className="ab-hearts"
+              onChange={(n) => actions.setMarks(selectedIds, { heart: n })}
+            />
+
+            <button className="ab-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 1 })}>标废</button>
+            <button className="ab-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 0 })}>取消废</button>
+
+            <span className="ab-group">
+              <span className="ab-label">分级</span>
+              {[0, 1, 2, 3, 4].map((lv) => (
+                <button key={lv} className="ab-btn tiny" onClick={() => actions.setAge(selectedIds, lv)}>l{lv}</button>
+              ))}
+              <button className="ab-btn tiny" onClick={() => actions.setAge(selectedIds, null)}>清除</button>
+            </span>
+
+            <button
+              className="ab-btn danger"
+              onClick={() => {
+                if (confirm(`把 ${selectedIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
+                  actions.trash(selectedIds);
+                }
+              }}
+            ><Icon name="trash" size={13} /> 删除</button>
+
+            <button className="ab-btn" onClick={() => actions.clearSelection()}>取消</button>
+          </>
         )}
 
-        <span className="path-right">
-          <input
-            className="path-search"
-            placeholder="文件名过滤…"
-            value={nameLike}
-            onChange={(e) => setNameLike(e.target.value)}
-          />
-          <button
-            className="icon-btn"
-            title={sort === 'name' ? '按名称' : '按时间'}
-            onClick={() => setSort(sort === 'name' ? 'mtime' : 'name')}
-          ><Icon name="sort" size={15} /></button>
-          <span className="path-sort-label">{sort === 'name' ? 'A-Z' : '时间'}</span>
-          <button
-            className="icon-btn"
-            title={asc ? '升序' : '降序'}
-            onClick={() => setAsc((v) => !v)}
-          >{asc ? '↑' : '↓'}</button>
+        <span className="ab-right">
+          {scanning && scanProgress && (
+            <span className="ab-scan">
+              {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
+            </span>
+          )}
+          <span className="ab-sort" title={library ? library.root_path : ''}>
+            {folder ? folder.split('/').pop() : (library ? library.name : '')}
+          </span>
+          <button className="icon-btn" title="刷新列表" onClick={() => actions.refresh()}>
+            <Icon name="refresh" size={14} />
+          </button>
         </span>
       </div>
 

@@ -1,6 +1,7 @@
 import { useEffect, useRef, useState } from 'react';
 import { observe, retryFailed } from '../thumbBus.js';
 import { useStore } from '../store.jsx';
+import Hearts from './Hearts.jsx';
 
 /**
  * 缩略图卡片：
@@ -39,6 +40,7 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
   return (
     <div
       ref={elRef}
+      data-thumb-id={item.id}
       className={`thumb ${selected ? 'selected' : ''} ${blocked ? 'occluded' : ''}`}
       onClick={(e) => onClick(item, e)}
       onDoubleClick={() => onDouble?.(item)}
@@ -94,7 +96,7 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
 
         {item.rejected === 1 && <span className="badge reject">废</span>}
         {item.heart > 0 && (
-          <span className="badge heart">{'♥'.repeat(Math.min(item.heart, 5))}</span>
+          <span className="badge heart"><Hearts value={item.heart} size={9} readOnly /></span>
         )}
         {item.ageLevel != null && <span className={`badge age age-${item.ageLevel}`}>l{item.ageLevel}</span>}
         {selected && <span className="badge sel">✓</span>}

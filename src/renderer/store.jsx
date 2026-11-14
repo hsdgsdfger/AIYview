@@ -22,6 +22,7 @@ export function StoreProvider({ children }) {
   const [sort, setSort] = useState('mtime');
   const [heartOnly, setHeartOnly] = useState(false);  // 收藏图片
   const [untagged, setUntagged] = useState(false);    // 无标签
+  const [rejectedOnly, setRejectedOnly] = useState(false); // 只看废标
   const [ageMax, setAgeMax] = useState(null);         // 分级阈值
   const [nameLike, setNameLike] = useState('');
   const [tagFilter, setTagFilter] = useState(null);   // {id,name}
@@ -37,7 +38,7 @@ export function StoreProvider({ children }) {
   const stateRef = useRef({});
   stateRef.current = {
     libraryId, folder, cursor, loading, hasMore, sort,
-    heartOnly, untagged, ageMax, nameLike, tagFilter,
+    heartOnly, untagged, rejectedOnly, ageMax, nameLike, tagFilter,
   };
 
   const say = useCallback((text) => {
@@ -94,7 +95,7 @@ export function StoreProvider({ children }) {
     setCursor(null);
     setHasMore(true);
     setSelection(new Set());
-  }, [libraryId, folder, sort, heartOnly, untagged, ageMax, nameLike, tagFilter, version]);
+  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike, tagFilter, version]);
 
   const loadMore = useCallback(async () => {
     const s = stateRef.current;
@@ -110,6 +111,7 @@ export function StoreProvider({ children }) {
           folder: s.folder || null,
           heartMin: s.heartOnly ? 1 : null,
           untaggedOnly: s.untagged,
+          rejectedOnly: s.rejectedOnly,
           ageMax: s.ageMax,
           nameLike: s.nameLike || '',
           tagId: s.tagFilter ? s.tagFilter.id : null,
@@ -139,7 +141,8 @@ export function StoreProvider({ children }) {
   /* 主进程事件 */
   useEffect(() => {
     const offProgress = window.yizi.on('scan:progress', (p) => setScanProgress(p));
-    const offChanged = window.yizi.on('browse:changed', () => setVersion((v) => v + 1));
+    // 扫描/标记等后台变更不再强制刷新列表：排序只在用户主动改排序/切目录时才变
+    const offChanged = window.yizi.on('browse:changed', () => { /* 保持列表稳定 */ });
     const offTag = window.yizi.on('tag:progress', (p) => {
       if (p && p.finished) return;
       setTagging(p);
@@ -169,7 +172,6 @@ export function StoreProvider({ children }) {
       setScanning(false);
       setScanProgress(null);
       if (summary) {
-        setVersion((v) => v + 1);
         say(`扫描完成：${summary.total} 张（新增 ${summary.inserted}，${(summary.elapsedMs / 1000).toFixed(1)}s）`);
       }
     },
@@ -180,9 +182,12 @@ export function StoreProvider({ children }) {
       setScanning(false);
       setScanProgress(null);
       if (summary) {
-        setVersion((v) => v + 1);
         say(`扫描完成：${summary.total} 张，新增 ${summary.inserted}，耗时 ${(summary.elapsedMs / 1000).toFixed(1)}s`);
       }
+    },
+    /** 显式刷新列表（唯一会重新排序的入口，除改排序/切目录外） */
+    refresh() {
+      setVersion((v) => v + 1);
     },
     async removeLibrary(id) {
       await run(window.yizi.library.remove({ id }), '移除图库');
@@ -193,18 +198,20 @@ export function StoreProvider({ children }) {
       const res = await run(window.yizi.image.marks({ ids, ...patch }), '标记');
       if (res) {
         setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ...patch } : it)));
-        setVersion((v) => v + 1);
+        // 任何标记都不重排列表（用户硬要求：只有主动改排序才变）
       }
     },
     async setAge(ids, level) {
       await run(window.yizi.image.age({ ids, level, source: 'manual' }), '分级');
       setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ageLevel: level, ageSource: 'manual' } : it)));
+      // 分级也不重排
     },
     async trash(ids) {
       const res = await run(window.yizi.delete.trash({ ids }), '删除');
       if (res) {
+        const gone = new Set(ids);
+        setItems((prev) => prev.filter((it) => !gone.has(it.id)));
         setSelection(new Set());
-        setVersion((v) => v + 1);
         say(`已移入回收站 ${res.trashed} 张${res.failed.length ? `，失败 ${res.failed.length}` : ''}`);
       }
     },
@@ -236,7 +243,6 @@ export function StoreProvider({ children }) {
       setTagging(null);
       if (r) {
         say(r.cancelled ? `打标中断 ${r.done}/${r.total}（可续跑）` : `打标完成：${r.tagged} 张`);
-        setVersion((v) => v + 1);
       }
     },
     async stopTagging() {
@@ -246,13 +252,13 @@ export function StoreProvider({ children }) {
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
-    setHeartOnly, setUntagged, setAgeMax, setNameLike, setTagFilter, setSelection,
+    setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
     setOcclusion, loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
     loadMore, actions, say]);
 

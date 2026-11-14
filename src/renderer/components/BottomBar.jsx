@@ -1,17 +1,14 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store.jsx';
 import TagPanel from './TagPanel.jsx';
 import Icon from './Icon.jsx';
 
 /**
- * 底栏（对应原版）：左「未选择/已选 N 张」+ 批量操作；
- * 中：分级遮挡三态；右：最近删除 / 提示词库 / 标签 / 打标。
+ * 底栏：左侧状态文字 + 中间分级遮挡三态 + 右侧面板开关（批量操作已上移到顶部操作条）。
  */
 export default function BottomBar() {
-  const { selection, actions, occlusion, setOcclusion, tagging } = useStore();
+  const { selection, actions, occlusion, setOcclusion, tagging, status } = useStore();
   const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | null
-
-  const selectedIds = useMemo(() => [...selection], [selection]);
 
   return (
     <>
@@ -20,38 +17,7 @@ export default function BottomBar() {
 
       <footer className="statusbar">
         <div className="sb-left">
-          {selectedIds.length > 0 ? (
-            <>
-              <span className="sel-count">已选 {selectedIds.length} 张</span>
-              <span className="sb-hearts">
-                {[1, 2, 3, 4, 5].map((n) => (
-                  <button key={n} onClick={() => actions.setMarks(selectedIds, { heart: n })} title={`${n} 心`}>
-                    {'♥'.repeat(n)}
-                  </button>
-                ))}
-                <button onClick={() => actions.setMarks(selectedIds, { heart: 0 })} title="清除心数">♡</button>
-              </span>
-              <button className="sb-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 1 })}>标废</button>
-              <button className="sb-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 0 })}>取消废</button>
-              <span className="sb-age">
-                <button onClick={() => actions.setAge(selectedIds, null)} title="清除分级">分级</button>
-                {[0, 1, 2, 3, 4].map((lv) => (
-                  <button key={lv} onClick={() => actions.setAge(selectedIds, lv)}>l{lv}</button>
-                ))}
-              </span>
-              <button
-                className="sb-btn danger"
-                onClick={() => {
-                  if (confirm(`把 ${selectedIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
-                    actions.trash(selectedIds);
-                  }
-                }}
-              ><Icon name="trash" size={13} /> 删除</button>
-              <button className="sb-btn" onClick={() => actions.clearSelection()}>取消</button>
-            </>
-          ) : (
-            <span className="sb-muted">未选择</span>
-          )}
+          <span className="sb-muted">{status || (selection.size > 0 ? '' : '未选择')}</span>
         </div>
 
         <div className="sb-center">

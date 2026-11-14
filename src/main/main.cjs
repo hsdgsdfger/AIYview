@@ -57,6 +57,33 @@ function broadcast(event, payload) {
   }
 }
 
+/**
+ * UI 缩放：整窗按 1.5 倍放大（用户要求），可在设置里改 uiScale。
+ * webContents zoomFactor 会等比放大整个界面，比逐个改 CSS 更稳。
+ */
+const DEFAULT_UI_SCALE = 1.5;
+
+function readUiScale() {
+  try {
+    const row = getDb().prepare('SELECT value FROM settings WHERE key = ?').get('uiScale');
+    const v = row ? JSON.parse(row.value) : null;
+    const n = Number(v);
+    return Number.isFinite(n) && n >= 0.75 && n <= 2.5 ? n : DEFAULT_UI_SCALE;
+  } catch {
+    return DEFAULT_UI_SCALE;
+  }
+}
+
+function applyUiScale(win) {
+  const scale = readUiScale();
+  // did-finish-load 之后再设一次，避免导航重置
+  win.webContents.setZoomFactor(scale);
+  win.webContents.once('did-finish-load', () => {
+    win.webContents.setZoomFactor(scale);
+    log(`[ui] zoomFactor=${scale}`);
+  });
+}
+
 function registerIpc() {
   ipcMain.handle('app:info', () => ({
     name: app.getName(),
@@ -106,6 +133,7 @@ function bootstrap() {
 
   registerIpc();
   const win = createMainWindow();
+  applyUiScale(win);
 
   win.webContents.on('did-finish-load', () => log('[boot] renderer loaded'));
 
@@ -113,13 +141,48 @@ function bootstrap() {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
         try {
+          if (process.env.YIZI_CLICKTEST) {
+            const c = await win.webContents.executeJavaScript(
+              '(() => { const t = document.querySelector(".thumb"); if (!t) return "no-thumb"; t.dispatchEvent(new MouseEvent("click", { bubbles: true })); return "clicked"; })()'
+            );
+            log(`[click] ${c}`);
+            await new Promise((r) => setTimeout(r, 500));
+          }
+          if (process.env.YIZI_ORDERTEST) {
+            const r = await win.webContents.executeJavaScript(`
+              (async () => {
+                const ids = () => [...document.querySelectorAll('.thumb')].map((el) => el.dataset.thumbId).join(',');
+                const before = ids();
+                const first = document.querySelector('.thumb');
+                first.dispatchEvent(new MouseEvent('click', { bubbles: true }));
+                await new Promise((r) => setTimeout(r, 200));
+                const rejectBtn = [...document.querySelectorAll('.ab-btn')].find((b) => b.textContent.trim() === '标废');
+                if (rejectBtn) rejectBtn.click();
+                await new Promise((r) => setTimeout(r, 700));
+                return { changed: before !== ids(), beforeHead: before.split(',').slice(0, 5), afterHead: ids().split(',').slice(0, 5) };
+              })()
+            `);
+            log(`[order] changed=${r.changed} head_before=${r.beforeHead.join('|')} head_after=${r.afterHead.join('|')}`);
+          }
+          if (process.env.YIZI_STATS) {
+            const s = await win.webContents.executeJavaScript(
+              `(async () => {
+                 const st = await window.yizi.thumb['cache-stats']();
+                 const imgs = document.querySelectorAll('.thumb-box img').length;
+                 const cards = document.querySelectorAll('.thumb').length;
+                 const spinners = document.querySelectorAll('.thumb-placeholder .spin').length;
+                 return { stats: st.data, cards, imgs, spinners };
+               })()`
+            );
+            log(`[stats] ${JSON.stringify(s)}`);
+          }
           if (process.env.YIZI_WHEELTEST) {
             const r = await win.webContents.executeJavaScript(`
               (() => {
                 const before = JSON.parse(JSON.stringify(window.__yiziDebug));
                 const canvas = document.querySelector('.canvas');
-                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, altKey: true, bubbles: true, cancelable: true }));
-                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, altKey: true, bubbles: true, cancelable: true }));
+                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }));
+                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }));
                 return new Promise((res) => setTimeout(() => res({ before: before.columns, after: window.__yiziDebug.columns }), 300));
               })()
             `);
