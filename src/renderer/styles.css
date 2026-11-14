@@ -369,6 +369,7 @@ button { font-family: inherit; }
 .statusbar {
   display: flex;
   align-items: center;
+  justify-content: space-between;
   gap: 10px;
   padding: 0 12px;
   background: var(--topbar);
@@ -378,7 +379,7 @@ button { font-family: inherit; }
 }
 .sb-left { display: flex; align-items: center; gap: 8px; overflow: hidden; }
 .sb-center { margin: 0 auto; display: flex; align-items: center; gap: 4px; }
-.sb-right { display: flex; align-items: center; gap: 4px; }
+.sb-right { display: flex; align-items: center; gap: 4px; margin-left: auto; }
 .sb-muted { color: var(--muted); }
 .sel-count { color: var(--accent); }
 
