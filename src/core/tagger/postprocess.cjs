@@ -3,25 +3,22 @@
 /**
  * WD tagger 前后处理（纯逻辑，无模型依赖，可单测）
  *
- * WD-SwinV2-v3 输入：448×448 RGB，float32 NCHW，取值 0–1；
- * 输出：按 selected_tags.csv 行序排列的概率（sigmoid 前 logits）。
+ * WD-SwinV2-v3 输入：[1, H, W, 3]（NHWC，本仓库 models/illuTag 的 onnx 实测为 NHWC），
+ * RGB，float32，取值 0–1；输出：按 selected_tags.csv 行序排列的概率（sigmoid 前 logits）。
  */
 
 const IMG_SIZE = 448;
 
-/** RGB 像素（HWC, 0–255）→ float32 NCHW（0–1） */
+/** RGB 像素（HWC, 0–255）→ float32 NHWC（0–1） */
 function pixelsToTensor(pixels, { width = IMG_SIZE, height = IMG_SIZE } = {}) {
   if (!pixels || pixels.length !== width * height * 3) {
     throw new Error(`像素缓冲尺寸不符：期望 ${width * height * 3}，实际 ${pixels ? pixels.length : 0}`);
   }
-  const data = new Float32Array(3 * width * height);
-  const plane = width * height;
-  for (let i = 0, j = 0; i < plane; i++, j += 3) {
-    data[i] = pixels[j] / 255;
-    data[plane + i] = pixels[j + 1] / 255;
-    data[2 * plane + i] = pixels[j + 2] / 255;
+  const data = new Float32Array(width * height * 3);
+  for (let i = 0; i < data.length; i++) {
+    data[i] = pixels[i] / 255;
   }
-  return { dims: [1, 3, width, height], data };
+  return { dims: [1, height, width, 3], data };
 }
 
 /** 数值稳定 sigmoid */

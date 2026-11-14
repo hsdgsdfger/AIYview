@@ -20,7 +20,11 @@ const meta = require(path.join(root, 'src/core/legacy/metadata.cjs'));
 const libRoot = process.argv[2] || 'D:\\ImageTags\\output';
 const tmpDb = path.join(root, '.native', 'e2e-real.sqlite');
 fs.mkdirSync(path.dirname(tmpDb), { recursive: true });
-try { fs.rmSync(tmpDb, { force: true }); } catch {}
+try {
+  fs.rmSync(tmpDb, { force: true });
+} catch {
+  /* 首次运行没有旧库 */
+}
 
 const db = new Database(tmpDb);
 db.pragma('foreign_keys = ON');

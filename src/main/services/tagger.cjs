@@ -104,7 +104,7 @@ async function runTagger({ libraryId, threshold = 0.35, topN = 24, batchSize = 8
           .raw()
           .toBuffer();
 
-        const input = pp.pixelsToTensor(new Float32Array(pixels.buffer, pixels.byteOffset, pixels.length / 4));
+        const input = pp.pixelsToTensor(pixels);
         const ort = require('onnxruntime-node');
         const tensor = new ort.Tensor('float32', input.data, input.dims);
         const results = await ortSession.run({ [ortSession.inputNames[0]]: tensor });
