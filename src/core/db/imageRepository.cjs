@@ -142,28 +142,35 @@ function buildFilters(filters = {}) {
 
 /**
  * 游标分页列表。
- * @param {object} q {libraryId, cursor, limit, sort:'mtime'|'name', filters}
+ * @param {object} q {libraryId, cursor, limit, sort:'mtime_desc'|'mtime_asc'|'name_asc'|'name_desc', filters}
+ *   （兼容旧值 'mtime' = mtime_desc、'name' = name_asc）
  * @returns {{items:Array, nextCursor:string|null, hasMore:boolean}}
  */
 function listPage(db, q) {
   const limit = Math.min(Math.max(Number(q.limit) || PAGE_DEFAULT, 1), PAGE_MAX);
-  const sort = q.sort === 'name' ? 'name' : 'mtime';
+  const sortKey = normalizeSort(q.sort);
+  const byName = sortKey === 'name_asc' || sortKey === 'name_desc';
+  const desc = sortKey === 'mtime_desc' || sortKey === 'name_desc';
   const { where, params } = buildFilters({ ...(q.filters || {}), libraryId: q.libraryId });
   const cursor = decodeCursor(q.cursor);
 
   let orderSql;
   let cursorSql = '';
-  if (sort === 'name') {
-    orderSql = 'ORDER BY rel_path ASC, id ASC';
+  if (byName) {
+    orderSql = `ORDER BY rel_path ${desc ? 'DESC' : 'ASC'}, id ${desc ? 'DESC' : 'ASC'}`;
     if (cursor && cursor.p) {
-      cursorSql = 'AND (rel_path > @curP OR (rel_path = @curP AND id > @curId))';
+      cursorSql = desc
+        ? 'AND (rel_path < @curP OR (rel_path = @curP AND id < @curId))'
+        : 'AND (rel_path > @curP OR (rel_path = @curP AND id > @curId))';
       params.curP = cursor.p;
       params.curId = cursor.id || 0;
     }
   } else {
-    orderSql = 'ORDER BY mtime_ms DESC, id DESC';
+    orderSql = `ORDER BY mtime_ms ${desc ? 'DESC' : 'ASC'}, id ${desc ? 'DESC' : 'ASC'}`;
     if (cursor && cursor.m !== undefined) {
-      cursorSql = 'AND (mtime_ms < @curM OR (mtime_ms = @curM AND id < @curId))';
+      cursorSql = desc
+        ? 'AND (mtime_ms < @curM OR (mtime_ms = @curM AND id < @curId))'
+        : 'AND (mtime_ms > @curM OR (mtime_ms = @curM AND id > @curId))';
       params.curM = cursor.m;
       params.curId = cursor.id || 0;
     }
@@ -181,13 +188,27 @@ function listPage(db, q) {
   let nextCursor = null;
   if (hasMore && items.length > 0) {
     const last = items[items.length - 1];
-    nextCursor =
-      sort === 'name'
-        ? encodeCursor({ p: last.rel_path, id: last.id })
-        : encodeCursor({ m: last.mtime_ms, id: last.id });
+    nextCursor = byName
+      ? encodeCursor({ p: last.rel_path, id: last.id })
+      : encodeCursor({ m: last.mtime_ms, id: last.id });
   }
 
   return { items, nextCursor, hasMore };
+}
+
+/** 排序值归一；未知值按 mtime_desc */
+function normalizeSort(value) {
+  switch (value) {
+    case 'mtime_asc':
+      return 'mtime_asc';
+    case 'name_asc':
+    case 'name':
+      return 'name_asc';
+    case 'name_desc':
+      return 'name_desc';
+    default:
+      return 'mtime_desc';
+  }
 }
 
 function countImages(db, filters = {}) {

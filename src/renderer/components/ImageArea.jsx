@@ -228,9 +228,9 @@ export default function ImageArea({ onOpenViewer }) {
   );
 }
 
-/** 遮挡控制二级界面：三态 + 阈值 + 取消选择（取代原「取消」按钮的位置） */
+/** 遮挡控制二级界面：三态 + 阈值 + 排序 + 取消选择（取代原「取消」按钮的位置） */
 function OcclusionMenu({ occlusion, setOcclusion }) {
-  const { actions, selection } = useStore();
+  const { actions, selection, sort, setSort } = useStore();
   const btnRef = useRef(null);
   const [pos, setPos] = useState(null);
 
@@ -304,6 +304,36 @@ function OcclusionMenu({ occlusion, setOcclusion }) {
                 onClick={() => setOcclusion({ ...occlusion, threshold: lv })}
               >L{lv}</button>
             ))}
+          </div>
+
+          <div className="settings-sep" />
+
+          <div className="occl-row">
+            <span className="occl-label">时间</span>
+            <button
+              className={`occl-opt ${sort === 'mtime_desc' ? 'on' : ''}`}
+              onClick={() => setSort('mtime_desc')}
+              title="修改时间从新到旧"
+            >新→旧</button>
+            <button
+              className={`occl-opt ${sort === 'mtime_asc' ? 'on' : ''}`}
+              onClick={() => setSort('mtime_asc')}
+              title="修改时间从旧到新"
+            >旧→新</button>
+          </div>
+
+          <div className="occl-row">
+            <span className="occl-label">名称</span>
+            <button
+              className={`occl-opt ${sort === 'name_asc' ? 'on' : ''}`}
+              onClick={() => setSort('name_asc')}
+              title="按文件名 A→Z"
+            >A→Z</button>
+            <button
+              className={`occl-opt ${sort === 'name_desc' ? 'on' : ''}`}
+              onClick={() => setSort('name_desc')}
+              title="按文件名 Z→A"
+            >Z→A</button>
           </div>
 
           {selection.size > 0 && (

@@ -19,7 +19,7 @@ export function StoreProvider({ children }) {
   const [scanning, setScanning] = useState(false);
   const [scanProgress, setScanProgress] = useState(null);
   const [columns, setColumns] = useState(4);          // 面板数
-  const [sort, setSort] = useState('mtime');
+  const [sort, setSortState] = useState('mtime_desc');
   const [heartOnly, setHeartOnly] = useState(false);  // 收藏图片
   const [untagged, setUntagged] = useState(false);    // 无标签
   const [rejectedOnly, setRejectedOnly] = useState(false); // 只看废标
@@ -46,6 +46,12 @@ export function StoreProvider({ children }) {
     if (text) setTimeout(() => setStatus((s) => (s === text ? '' : s)), 3200);
   }, []);
 
+  /** 改排序：立刻重排列表，并记住到 settings */
+  const setSort = useCallback((value) => {
+    setSortState(value);
+    window.yizi.settings.set({ key: 'sort', value });
+  }, []);
+
   const run = useCallback(async (promise, action) => {
     const res = await promise;
     if (!res || !res.ok) {
@@ -55,10 +61,13 @@ export function StoreProvider({ children }) {
     return res.data;
   }, [say]);
 
-  /* 主题恢复 + 窗口状态 */
+  /* 主题恢复 + 窗口状态 + 排序恢复 */
   useEffect(() => {
     window.yizi.settings.get({ key: 'theme' }).then((r) => {
       if (r.ok && r.data) document.documentElement.setAttribute('data-theme', r.data);
+    });
+    window.yizi.settings.get({ key: 'sort' }).then((r) => {
+      if (r.ok && r.data) setSortState(r.data);
     });
     window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
     return window.yizi.on('window:maximized', (v) => setMaximized(Boolean(v)));
