@@ -1,0 +1,18 @@
+node_modules/
+dist/
+release/
+*.log
+
+# 本地库文件（真库在 <图库根>/.yiziview/ 下，不随仓库走）
+*.sqlite
+*.sqlite-wal
+*.sqlite-shm
+*.db
+*.db-wal
+*.db-shm
+/tmp/
+.yiziview/
+
+# 模型不进仓库（放 Release assets 或本地 models/）
+models/
+*.onnx
