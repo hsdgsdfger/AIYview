@@ -5,6 +5,7 @@ import Thumb from './Thumb.jsx';
 import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
 import { setSizePref } from '../thumbBus.js';
+import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
 
 /**
  * 主视图：顶部操作条（选中批处理）+ 瀑布流。
@@ -13,7 +14,7 @@ import { setSizePref } from '../thumbBus.js';
 export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
-    libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset,
+    libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
@@ -113,18 +114,41 @@ export default function ImageArea({ onOpenViewer }) {
     });
   }, [selectedIds, items]);
 
-  /* Alt+1~5 → 分级 L0~L4（有选中才生效） */
-  const hotRef = useRef({ ids: [], setAge: null });
-  hotRef.current = { ids: selectedIds, setAge: actions.setAge };
+  /* 全局快捷键：打分 / 评级 / 标废 / 删除（键位来自设置，有选中才生效；查看器打开时归查看器处理） */
+  const hotRef = useRef({});
+  hotRef.current = { ids: selectedIds, items, shortcuts, actions };
   useEffect(() => {
     const onKey = (e) => {
-      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
-      const n = Number(e.key);
-      if (!Number.isInteger(n) || n < 1 || n > 5) return;
-      const { ids, setAge } = hotRef.current;
-      if (!ids.length) return;
-      e.preventDefault();
-      setAge(ids, n - 1); // 1→L0, 5→L4
+      if (isTypingTarget(e.target)) return;
+      if (document.querySelector('.viewer')) return;
+      const combo = comboOf(e);
+      if (!combo) return;
+      const { ids, items: rows, shortcuts: keys, actions: act } = hotRef.current;
+      if (!ids || ids.length === 0) return;
+      const action = actionForCombo(keys, combo);
+      if (!action) return;
+
+      if (action.startsWith('heart')) {
+        e.preventDefault();
+        act.setMarks(ids, { heart: Number(action.slice(5)) });
+        return;
+      }
+      if (action.startsWith('age')) {
+        e.preventDefault();
+        act.setAge(ids, Number(action.slice(3)));
+        return;
+      }
+      if (action === 'rejected') {
+        e.preventDefault();
+        const map = new Map(rows.map((r) => [r.id, r]));
+        const allRejected = ids.every((id) => map.get(id) && map.get(id).rejected === 1);
+        act.setMarks(ids, { rejected: allRejected ? 0 : 1 });
+        return;
+      }
+      if (action === 'trash') {
+        e.preventDefault();
+        act.trash(ids);
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);

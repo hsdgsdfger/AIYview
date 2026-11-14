@@ -2,11 +2,12 @@ import { useEffect, useRef, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { useStore } from '../store.jsx';
 import TagPanel from './TagPanel.jsx';
+import ShortcutPanel from './ShortcutPanel.jsx';
 import Icon from './Icon.jsx';
 
 /**
  * 底栏：左状态 / 中遮挡三态 / 右打标 + 设置。
- * 「最近删除、标签、提示词库、日志」都收进右下角设置里。
+ * 「最近删除、标签、提示词库、快捷键、日志」都收进右下角设置里。
  */
 export default function BottomBar() {
   const { selection, actions, tagging, status } = useStore();
@@ -33,7 +34,8 @@ export default function BottomBar() {
   return (
     <>
       {panel === 'tags' && <TagPanel onClose={() => setPanel(null)} />}
-      {panel && panel !== 'tags' && <Panel name={panel} onClose={() => setPanel(null)} />}
+      {panel === 'shortcuts' && <ShortcutPanel onClose={() => setPanel(null)} />}
+      {panel && panel !== 'tags' && panel !== 'shortcuts' && <Panel name={panel} onClose={() => setPanel(null)} />}
 
       <footer className="statusbar">
         <div className="sb-left">
@@ -70,6 +72,11 @@ export default function BottomBar() {
                 <button onClick={() => open('prompts')}>
                   <Icon name="tag" size={14} />
                   <span>提示词库</span>
+                </button>
+                <button onClick={() => open('shortcuts')}>
+                  <Icon name="sort" size={14} />
+                  <span>快捷键</span>
+                  <em>打分/评级/标废/删除</em>
                 </button>
                 <div className="settings-sep" />
                 <button

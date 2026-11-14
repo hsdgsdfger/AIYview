@@ -1,4 +1,5 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { DEFAULT_SHORTCUTS } from './shortcuts.js';
 
 /**
  * 全局状态：库 / 目录 / 分页 / 选中 / 视图 / 筛选 / 标签栏。
@@ -29,6 +30,7 @@ export function StoreProvider({ children }) {
   const [tagList, setTagList] = useState([]);
   const [selection, setSelection] = useState(new Set());
   const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2 });
+  const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
   const [revealed, setRevealed] = useState(new Set());
   const [tagging, setTagging] = useState(null);
   const [status, setStatus] = useState('');
@@ -52,6 +54,21 @@ export function StoreProvider({ children }) {
     window.yizi.settings.set({ key: 'sort', value });
   }, []);
 
+  /** 改单个快捷键并持久化 */
+  const setShortcut = useCallback((id, combo) => {
+    setShortcuts((prev) => {
+      const next = { ...prev, [id]: combo };
+      window.yizi.settings.set({ key: 'shortcuts', value: next });
+      return next;
+    });
+  }, []);
+
+  /** 全部恢复默认 */
+  const resetShortcuts = useCallback(() => {
+    setShortcuts(DEFAULT_SHORTCUTS);
+    window.yizi.settings.set({ key: 'shortcuts', value: DEFAULT_SHORTCUTS });
+  }, []);
+
   const run = useCallback(async (promise, action) => {
     const res = await promise;
     if (!res || !res.ok) {
@@ -68,6 +85,9 @@ export function StoreProvider({ children }) {
     });
     window.yizi.settings.get({ key: 'sort' }).then((r) => {
       if (r.ok && r.data) setSortState(r.data);
+    });
+    window.yizi.settings.get({ key: 'shortcuts' }).then((r) => {
+      if (r.ok && r.data && typeof r.data === 'object') setShortcuts({ ...DEFAULT_SHORTCUTS, ...r.data });
     });
     window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
     return window.yizi.on('window:maximized', (v) => setMaximized(Boolean(v)));
@@ -273,11 +293,12 @@ export function StoreProvider({ children }) {
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
+    shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
     setOcclusionWithReset: (next) => { setRevealed(new Set()); setOcclusion(next); }, loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
-    tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
+    tagFilter, tagList, selection, occlusion, shortcuts, revealed, tagging, status, version, maximized,
     loadMore, actions, say]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

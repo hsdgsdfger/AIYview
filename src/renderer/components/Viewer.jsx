@@ -1,13 +1,14 @@
 import { useEffect, useMemo, useState } from 'react';
 import { useStore } from '../store.jsx';
 import Hearts from './Hearts.jsx';
+import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
 
 /**
  * 全屏查看器（A3）：缩放/平移、心数快捷键、废标、分级标记、两级提示词面板。
  * 一级 = 正负提示词；小箭头展开二级参数区（D3/D3b/D3c，默认收起）。
  */
 export default function Viewer({ item, onClose, onNav }) {
-  const { actions } = useStore();
+  const { actions, shortcuts } = useStore();
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [info, setInfo] = useState(null);
@@ -25,18 +26,42 @@ export default function Viewer({ item, onClose, onNav }) {
 
   useEffect(() => {
     const onKey = (e) => {
-      if (e.key === 'Escape') onClose();
-      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') onNav(-1);
-      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') onNav(1);
-      if (e.key >= '1' && e.key <= '5') actions.setMarks([item.id], { heart: Number(e.key) });
-      if (e.key === '0') actions.setMarks([item.id], { heart: 0 });
-      if (e.key.toLowerCase() === 'x') actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 });
-      if (e.key === '+' || e.key === '=') setScale((s) => Math.min(8, s * 1.25));
-      if (e.key === '-') setScale((s) => Math.max(0.1, s / 1.25));
+      if (e.key === 'Escape') { onClose(); return; }
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') { onNav(-1); return; }
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') { onNav(1); return; }
+      if (e.key === '+' || e.key === '=') { setScale((s) => Math.min(8, s * 1.25)); return; }
+      if (e.key === '-') { setScale((s) => Math.max(0.1, s / 1.25)); return; }
+
+      if (isTypingTarget(e.target)) return;
+      const combo = comboOf(e);
+      if (!combo) return;
+      const action = actionForCombo(shortcuts, combo);
+      if (!action) return;
+
+      if (action.startsWith('heart')) {
+        e.preventDefault();
+        actions.setMarks([item.id], { heart: Number(action.slice(5)) });
+        return;
+      }
+      if (action.startsWith('age')) {
+        e.preventDefault();
+        actions.setAge([item.id], Number(action.slice(3)));
+        return;
+      }
+      if (action === 'rejected') {
+        e.preventDefault();
+        actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 });
+        return;
+      }
+      if (action === 'trash') {
+        e.preventDefault();
+        actions.trash([item.id]);
+        onClose();
+      }
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [item, onClose, onNav, actions]);
+  }, [item, onClose, onNav, actions, shortcuts]);
 
   const onWheel = (e) => {
     e.preventDefault();
