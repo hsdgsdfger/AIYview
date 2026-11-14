@@ -104,6 +104,33 @@ export default function ImageArea({ onOpenViewer }) {
 
   const selectedIds = useMemo(() => [...selection], [selection]);
 
+  /* 全部选中项都已标废 → 按钮变成「取消废」 */
+  const allRejected = useMemo(() => {
+    if (selectedIds.length === 0) return false;
+    const map = new Map(items.map((it) => [it.id, it]));
+    return selectedIds.every((id) => {
+      const it = map.get(id);
+      return it && it.rejected === 1;
+    });
+  }, [selectedIds, items]);
+
+  /* Alt+1~5 → 分级 L0~L4（有选中才生效） */
+  const hotRef = useRef({ ids: [], setAge: null });
+  hotRef.current = { ids: selectedIds, setAge: actions.setAge };
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!e.altKey || e.ctrlKey || e.metaKey || e.shiftKey) return;
+      const n = Number(e.key);
+      if (!Number.isInteger(n) || n < 1 || n > 5) return;
+      const { ids, setAge } = hotRef.current;
+      if (!ids.length) return;
+      e.preventDefault();
+      setAge(ids, n - 1); // 1→L0, 5→L4
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, []);
+
   if (libraryId == null) {
     return (
       <section className="content">
@@ -130,13 +157,21 @@ export default function ImageArea({ onOpenViewer }) {
               onChange={(n) => actions.setMarks(selectedIds, { heart: n })}
             />
 
-            <button className="ab-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 1 })}>标废</button>
-            <button className="ab-btn" onClick={() => actions.setMarks(selectedIds, { rejected: 0 })}>取消废</button>
+            <button
+              className={`ab-btn ${allRejected ? 'warn' : ''}`}
+              title="点一下标废，再点一下取消废"
+              onClick={() => actions.setMarks(selectedIds, { rejected: allRejected ? 0 : 1 })}
+            >{allRejected ? '取消废' : '标废'}</button>
 
             <span className="ab-group">
-              <span className="ab-label">分级</span>
+              <span className="ab-label" title="Alt+1~5 快捷分级">分级</span>
               {[0, 1, 2, 3, 4].map((lv) => (
-                <button key={lv} className="ab-btn tiny" onClick={() => actions.setAge(selectedIds, lv)}>l{lv}</button>
+                <button
+                  key={lv}
+                  className="ab-btn tiny"
+                  title={`Alt+${lv + 1}`}
+                  onClick={() => actions.setAge(selectedIds, lv)}
+                >L{lv}</button>
               ))}
               <button className="ab-btn tiny" onClick={() => actions.setAge(selectedIds, null)}>清除</button>
             </span>

@@ -88,9 +88,11 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
             onClick={(e) => {
               e.stopPropagation();
               actions.reveal(item.id);
+              // 遮罩盖住了整张卡：点一下既解除遮挡，也按正常规则选中
+              onClick(item, e);
             }}
           >
-            <span>l{item.ageLevel} · 点击显示</span>
+            <span>L{item.ageLevel} · 点击显示</span>
           </div>
         )}
 
@@ -98,7 +100,7 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
         {item.heart > 0 && (
           <span className="badge heart"><Hearts value={item.heart} size={9} readOnly /></span>
         )}
-        {item.ageLevel != null && <span className={`badge age age-${item.ageLevel}`}>l{item.ageLevel}</span>}
+        {item.ageLevel != null && <span className={`badge age age-${item.ageLevel}`}>L{item.ageLevel}</span>}
         {selected && <span className="badge sel">✓</span>}
       </div>
     </div>

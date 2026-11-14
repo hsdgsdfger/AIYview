@@ -196,6 +196,34 @@ function bootstrap() {
             log(`[click] ${c}`);
             await new Promise((r) => setTimeout(r, 500));
           }
+          if (process.env.YIZI_UITEST) {
+            const r = await win.webContents.executeJavaScript(
+              `(async () => {
+                 const wait = (ms) => new Promise((r) => setTimeout(r, ms));
+                 const first = () => document.querySelector(".thumb");
+                 const btn = () => [...document.querySelectorAll(".ab-btn")].find((b) => ["标废","取消废"].includes(b.textContent.trim()));
+                 const state = () => ({
+                   label: btn() ? btn().textContent.trim() : "none",
+                   rejectBadge: !!first().querySelector(".badge.reject"),
+                   ageBadge: (first().querySelector(".badge.age") || {}).textContent || "",
+                 });
+                 first().dispatchEvent(new MouseEvent("click", { bubbles: true }));
+                 await wait(500);
+                 const s1 = state();
+                 btn().click(); await wait(900); const s2 = state();
+                 btn().click(); await wait(900); const s3 = state();
+                 window.dispatchEvent(new KeyboardEvent("keydown", { key: "3", altKey: true, bubbles: true }));
+                 await wait(900); const s4 = state();
+                 window.dispatchEvent(new KeyboardEvent("keydown", { key: "5", altKey: true, bubbles: true }));
+                 await wait(900); const s5 = state();
+                 document.querySelector(".settings-anchor button").click();
+                 await wait(300);
+                 const menu = [...document.querySelectorAll(".settings-menu button")].map((b) => b.textContent.trim());
+                 return { s1, s2, s3, s4, s5, menu };
+               })()`
+            );
+            log(`[uitest] ${JSON.stringify(r)}`);
+          }
           if (process.env.YIZI_ERRTEST) {
             await win.webContents.executeJavaScript("setTimeout(() => { throw new Error('注入的渲染层错误'); }, 0)");
             await new Promise((r) => setTimeout(r, 600));

@@ -100,7 +100,7 @@ export default function Viewer({ item, onClose, onNav }) {
               key={level}
               className={`btn ghost ${item.ageLevel === level ? 'primary' : ''}`}
               onClick={() => actions.setAge([item.id], item.ageLevel === level ? null : level)}
-            >l{level}</button>
+            >L{level}</button>
           ))}
           {item.ageLevel == null && <span className="muted">未判定</span>}
         </div>
