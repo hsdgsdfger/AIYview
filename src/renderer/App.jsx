@@ -1,7 +1,7 @@
 import { useCallback, useMemo, useState } from 'react';
 import { StoreProvider, useStore } from './store.jsx';
+import TopBar from './components/TopBar.jsx';
 import Sidebar from './components/Sidebar.jsx';
-import Toolbar from './components/Toolbar.jsx';
 import ImageArea from './components/ImageArea.jsx';
 import BottomBar from './components/BottomBar.jsx';
 import Viewer from './components/Viewer.jsx';
@@ -15,7 +15,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { items } = useStore();
+  const { items, status } = useStore();
   const [viewerId, setViewerId] = useState(null);
 
   const viewerItem = useMemo(
@@ -35,12 +35,13 @@ function Shell() {
 
   return (
     <div className="app">
-      <Sidebar />
-      <div className="main-col">
-        <Toolbar />
+      <TopBar />
+      <div className="main-row">
+        <Sidebar />
         <ImageArea onOpenViewer={(item) => setViewerId(item.id)} />
-        <BottomBar />
       </div>
+      <BottomBar />
+      {status && <div className="toast">{status}</div>}
       {viewerItem && <Viewer item={viewerItem} onClose={() => setViewerId(null)} onNav={nav} />}
     </div>
   );

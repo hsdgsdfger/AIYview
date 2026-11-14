@@ -1,83 +1,52 @@
-import { useCallback, useEffect, useLayoutEffect, useMemo, useRef, useState } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import Thumb from './Thumb.jsx';
+import Icon from './Icon.jsx';
 import { setSizePref } from '../thumbBus.js';
 
 /**
- * 主视图：虚拟化网格 / 瀑布流（同一套窗口化渲染，瀑布流只是可变行高）。
- * Ctrl+滚轮调缩略图尺寸；滚到底部自动续页；滚动翻页目标 ≤120ms。
+ * 主视图：路径条 + 瀑布流/网格。
+ * 瀑布流用 CSS 多栏（视觉与原版一致）；分页每次 400 张，DOM 有上限。
  */
 export default function ImageArea({ onOpenViewer }) {
-  const { items, view, setView, hasMore, loading, loadMore, selection, actions, libraryId, folder } = useStore();
+  const {
+    items, preset, columns, hasMore, loading, loadMore, selection, actions,
+    libraryId, libraries, folder, sort, setSort, nameLike, setNameLike, scanning, scanProgress,
+  } = useStore();
   const scrollRef = useRef(null);
-  const [width, setWidth] = useState(1200);
   const lastIdxRef = useRef(-1);
+  const [asc, setAsc] = useState(false);
 
-  const cols = Math.max(2, Math.floor((width - 8) / (view.gridSize + 8)));
-  const cell = Math.floor((width - 8) / cols) - 8;
-
-  useLayoutEffect(() => {
-    const el = scrollRef.current;
-    if (!el) return undefined;
-    const ro = new ResizeObserver((entries) => setWidth(entries[0].contentRect.width));
-    ro.observe(el);
-    setWidth(el.clientWidth);
-    return () => ro.disconnect();
-  }, []);
-
-  useEffect(() => {
-    setSizePref(view.gridSize > 260 ? 'md' : 'sm');
-  }, [view.gridSize]);
-
-  /* 行切分：固定列数顺序切，行高按行内最大项 */
-  const rows = useMemo(() => {
-    const out = [];
-    for (let i = 0; i < items.length; i += cols) {
-      out.push(items.slice(i, i + cols));
-    }
-    return out;
-  }, [items, cols]);
-
-  /* 窗口化：只渲染可视 ±6 行 */
-  const [range, setRange] = useState({ start: 0, end: 40 });
-  const rowEstimate = view.mode === 'grid' ? cell + 26 : cell * 1.1 + 26;
-
-  const recompute = useCallback(() => {
-    const el = scrollRef.current;
-    if (!el) return;
-    const top = el.scrollTop;
-    const viewport = el.clientHeight;
-    const start = Math.max(0, Math.floor(top / rowEstimate) - 6);
-    const end = Math.min(rows.length, Math.ceil((top + viewport) / rowEstimate) + 6);
-    setRange({ start, end });
-  }, [rows.length, rowEstimate]);
-
-  useEffect(() => {
-    recompute();
-  }, [recompute, view.mode, view.gridSize]);
+  const library = libraries.find((l) => l.id === libraryId) || null;
+  if (typeof window !== "undefined") window.__yiziDebug = { items: items.length, hasMore, loading, libraryId, preset, columns, pick: typeof window.yizi.library.pick };
 
   const onScroll = useCallback(() => {
-    recompute();
     const el = scrollRef.current;
     if (!el) return;
-    if (el.scrollTop + el.clientHeight > el.scrollHeight - 600) loadMore();
-  }, [recompute, loadMore]);
+    if (el.scrollTop + el.clientHeight > el.scrollHeight - 800) loadMore();
+  }, [loadMore]);
 
-  const onWheel = useCallback((e) => {
-    if (!e.ctrlKey) return;
-    e.preventDefault();
-    const delta = e.deltaY > 0 ? -20 : 20;
-    const next = Math.min(420, Math.max(120, view.gridSize + delta));
-    setView({ ...view, gridSize: next });
-  }, [view, setView]);
+  /* 按「每格实际像素」选缩略图档位：高清屏/大格子用 1024，否则 600（与原版一致） */
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const pick = () => {
+      const dpr = window.devicePixelRatio || 1;
+      const cell = (el.clientWidth - 16) / Math.max(1, columns) * dpr;
+      setSizePref(cell > 760 ? 'md' : 'sm');
+    };
+    pick();
+    const ro = new ResizeObserver(pick);
+    ro.observe(el);
+    return () => ro.disconnect();
+  }, [columns]);
 
   const clickItem = useCallback((item, e) => {
     if (e.shiftKey && lastIdxRef.current >= 0) {
-      // 区间选择：按当前列表顺序
-      const lastPos = items.findIndex((it) => it.id === lastIdxRef.current);
-      const curPos = items.findIndex((it) => it.id === item.id);
-      if (lastPos >= 0 && curPos >= 0) {
-        const [lo, hi] = lastPos < curPos ? [lastPos, curPos] : [curPos, lastPos];
+      const a = items.findIndex((it) => it.id === lastIdxRef.current);
+      const b = items.findIndex((it) => it.id === item.id);
+      if (a >= 0 && b >= 0) {
+        const [lo, hi] = a < b ? [a, b] : [b, a];
         actions.selectRange(items.slice(lo, hi + 1).map((it) => it.id), true);
         return;
       }
@@ -86,41 +55,97 @@ export default function ImageArea({ onOpenViewer }) {
     lastIdxRef.current = item.id;
   }, [items, actions]);
 
-  const padTop = range.start * rowEstimate;
-  const padBottom = Math.max(0, (rows.length - range.end) * rowEstimate);
-  const visibleRows = rows.slice(range.start, range.end);
+  const pathLabel = useMemo(() => {
+    if (!library) return '';
+    const root = library.root_path.replace(/\//g, '\\');
+    return folder ? `${root}\\${folder.replace(/\//g, '\\')}` : root;
+  }, [library, folder]);
+
+  /* 真瀑布流：按预估高度把图分给当前最矮的一列 */
+  const buckets = useMemo(() => {
+    const cols = Array.from({ length: columns }, () => ({ items: [], h: 0 }));
+    for (const item of items) {
+      const aspect = preset === 'grid'
+        ? 1
+        : (item.width && item.height ? item.width / item.height : 0.72);
+      const target = cols.reduce((min, cur) => (cur.h < min.h ? cur : min), cols[0]);
+      target.items.push(item);
+      target.h += 1 / Math.min(Math.max(aspect, 0.45), 2.4);
+    }
+    return cols;
+  }, [items, columns, preset]);
 
   if (libraryId == null) {
     return (
-      <div className="empty-hint">
-        <p>还没有图库。左侧注册一个目录（如 D:\\ImageTags\\output），然后点「扫描」。</p>
-      </div>
+      <section className="content">
+        <div className="empty-hint">
+          <Icon name="folder-plus" size={34} />
+          <p>还没有图库。点左上「添加文件夹」选一个目录（如 D:\ImageTags\output），会自动扫描入库。</p>
+        </div>
+      </section>
     );
   }
 
   return (
-    <div className="image-area" ref={scrollRef} onScroll={onScroll} onWheel={onWheel}>
-      <div style={{ height: padTop }} />
-      <div className={view.mode === 'grid' ? 'grid' : 'waterfall'}>
-        {visibleRows.map((row, ri) => (
-          <div className="row" key={row[0] ? `${row[0].id}` : ri}>
-            {row.map((item) => (
-              <Thumb
-                key={item.id}
-                item={item}
-                cellWidth={cell}
-                selected={selection.has(item.id)}
-                onClick={clickItem}
-                onDouble={() => onOpenViewer(item)}
-              />
-            ))}
-          </div>
-        ))}
+    <section className="content">
+      <div className="pathbar">
+        <button className="icon-btn" title="返回上一层" disabled>
+          <Icon name="back" size={16} />
+        </button>
+        <Icon name="folder" size={15} className="path-ico" />
+        <span className="path-text" title={pathLabel}>{pathLabel}</span>
+
+        {scanning && scanProgress && (
+          <span className="path-scan">
+            {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
+          </span>
+        )}
+
+        <span className="path-right">
+          <input
+            className="path-search"
+            placeholder="文件名过滤…"
+            value={nameLike}
+            onChange={(e) => setNameLike(e.target.value)}
+          />
+          <button
+            className="icon-btn"
+            title={sort === 'name' ? '按名称' : '按时间'}
+            onClick={() => setSort(sort === 'name' ? 'mtime' : 'name')}
+          ><Icon name="sort" size={15} /></button>
+          <span className="path-sort-label">{sort === 'name' ? 'A-Z' : '时间'}</span>
+          <button
+            className="icon-btn"
+            title={asc ? '升序' : '降序'}
+            onClick={() => setAsc((v) => !v)}
+          >{asc ? '↑' : '↓'}</button>
+        </span>
       </div>
-      <div style={{ height: padBottom }} />
-      {loading && <div className="loading-hint">加载中…</div>}
-      {!hasMore && items.length > 0 && <div className="loading-hint muted">到底了，共 {items.length} 张{folder ? '（当前目录）' : ''}</div>}
-      {items.length === 0 && !loading && <div className="empty-hint">这里还没有图片。点「扫描」入库。</div>}
-    </div>
+
+      <div className={`canvas ${preset}`} ref={scrollRef} onScroll={onScroll}>
+        <div className="cols">
+          {buckets.map((bucket, i) => (
+            <div className="col" key={i}>
+              {bucket.items.map((item) => (
+                <Thumb
+                  key={item.id}
+                  item={item}
+                  uniform={preset === 'grid'}
+                  selected={selection.has(item.id)}
+                  onClick={clickItem}
+                  onDouble={() => onOpenViewer(item)}
+                />
+              ))}
+            </div>
+          ))}
+        </div>
+
+        {loading && <div className="feed-hint">加载中…</div>}
+        {!hasMore && items.length > 0 && <div className="feed-hint">共 {items.length} 张</div>}
+        {items.length === 0 && !loading && (
+          <div className="empty-hint"><p>这里还没有图片，点右上 ⟳ 重新扫描。</p></div>
+        )}
+      </div>
+    </section>
   );
 }

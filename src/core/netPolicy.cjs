@@ -7,7 +7,13 @@
  * 其它 http/https 一律拦截。无法解析的 URL 按“拦截”处理（fail closed）。
  */
 
-const LOCAL_SCHEMES = new Set(['file:', 'data:', 'blob:', 'devtools:', 'about:', 'chrome:', 'chrome-extension:', 'javascript:']);
+/**
+ * 本地协议：不产生任何网络流量。
+ * media: 是自注册的只读协议（本地图片/缩略图），必须放行，否则图片全部加载失败。
+ */
+const LOCAL_SCHEMES = new Set([
+  'file:', 'data:', 'blob:', 'devtools:', 'about:', 'chrome:', 'chrome-extension:', 'javascript:', 'media:',
+]);
 
 function parse(rawUrl) {
   try {

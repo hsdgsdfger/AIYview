@@ -7,6 +7,7 @@ const { applyNetworkPolicy } = require('./security.cjs');
 const { registerMediaProtocol } = require('./mediaProtocol.cjs');
 const { getDb, closeDb, ensureMediaRoots, thumbnailsDir, registerMediaRoot } = require('./db/database.cjs');
 const { registerBrowseIpc } = require('./services/browse.cjs');
+const { registerLibraryPickerIpc } = require('./services/libraryPicker.cjs');
 const { registerScanIpc } = require('./services/scanner.cjs');
 const { registerThumbIpc } = require('./services/thumbs.cjs');
 const { registerPromptIpc } = require('./services/prompts.cjs');
@@ -18,6 +19,7 @@ const { registerTaggerIpc } = require('./services/tagger.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
+const SHOT = process.argv.includes('--shot');
 const IS_DEV = Boolean(DEV_SERVER_URL);
 
 /** 延迟到真正需要时才加载原生模块，窗口启动不依赖 better-sqlite3 的 ABI */
@@ -67,6 +69,7 @@ function registerIpc() {
     }
   });
 
+  registerLibraryPickerIpc();
   registerBrowseIpc(broadcast);
   registerScanIpc(broadcast);
   registerThumbIpc();
@@ -96,6 +99,24 @@ function bootstrap() {
   const win = createMainWindow();
 
   win.webContents.on('did-finish-load', () => log('[boot] renderer loaded'));
+
+  if (SHOT) {
+    win.webContents.once('did-finish-load', () => {
+      setTimeout(async () => {
+        try {
+          const dbg = await win.webContents.executeJavaScript('JSON.stringify(window.__yiziDebug || null)');
+          log(`[shot] debug ${dbg}`);
+          const image = await win.webContents.capturePage();
+          const out = path.join(app.getPath('userData'), 'shot.png');
+          require('node:fs').writeFileSync(out, image.toPNG());
+          log(`[shot] saved ${out}`);
+        } catch (error) {
+          log(`[shot] failed ${error.message}`);
+        }
+        app.exit(0);
+      }, 6000);
+    });
+  }
 
   if (SMOKE) {
     try {
@@ -140,6 +161,13 @@ if (!app.requestSingleInstanceLock()) {
   log('[main] single-instance lock NOT acquired, quitting');
   app.quit();
 } else {
+  // 自定义协议必须在 app ready 前声明特权，否则 <img src="media://..."> 会被 Chromium 拒绝
+  protocol.registerSchemesAsPrivileged([
+    {
+      scheme: 'media',
+      privileges: { standard: true, secure: true, supportFetchAPI: true, stream: true, bypassCSP: false },
+    },
+  ]);
   app.on('second-instance', () => {
     const [win] = BrowserWindow.getAllWindows();
     if (win) {

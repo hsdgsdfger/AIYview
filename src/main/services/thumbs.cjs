@@ -13,7 +13,7 @@ const { resolveInLibrary } = require('../fs/paths.cjs');
  * 缩略图管线：批量 IPC + 优先级队列 + 磁盘缓存配额。
  * 失败一律返回 null url（渲染层画占位），绝不回退原图（性能根因 5）。
  */
-const SIZES = { sm: 320, md: 640 };
+const SIZES = { sm: 600, md: 1024 }; // 与原版一致（原 thumbnailCache 默认 600）
 
 let cache = null;
 let scheduler = null;
@@ -44,7 +44,7 @@ async function generateThumbnail(srcAbs, size) {
   await sharp(srcAbs, { failOn: 'none' })
     .rotate()
     .resize(size, size, { fit: 'inside', withoutEnlargement: true })
-    .jpeg({ quality: 80 })
+    .jpeg({ quality: 82, mozjpeg: true })
     .toFile(`${target}.tmp`);
   await fsp.rename(`${target}.tmp`, target);
   const st = await fsp.stat(target);
@@ -101,7 +101,19 @@ async function getThumbnails({ ids, size = 'sm', priority = PRIORITY.NEAR } = {}
           w: row.width,
           h: row.height,
         };
-      } catch {
+      } catch (error) {
+        if (process.env.YIZI_DEBUG) {
+          try {
+            const fs = require('node:fs');
+            const logPath = require('node:path').join(
+              require('electron').app.getPath('userData'),
+              'thumb-errors.log'
+            );
+            fs.appendFileSync(logPath, `${srcAbs} :: ${error.message}\n`);
+          } catch {
+            /* 排障日志写失败不影响出图 */
+          }
+        }
         return blank;
       }
     })

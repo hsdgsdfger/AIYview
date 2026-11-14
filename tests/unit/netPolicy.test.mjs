@@ -39,3 +39,13 @@ test('shouldAllowRequest 是取反的便捷封装', () => {
   assert.equal(policy.shouldAllowRequest('file:///D:/a.png'), true);
   assert.equal(policy.shouldAllowRequest('https://example.com/a.png'), false);
 });
+
+test('media:// 是本地只读协议，不当作网络请求拦截', () => {
+  assert.equal(policy.isBlockedUrl('media://local/D:/pics/a.png'), false);
+  assert.equal(policy.isBlockedUrl('media://local/C:/Users/x/AppData/Roaming/yiziview-next/thumbnails/abc_320.jpg'), false);
+});
+
+test('media: 之外的自定义协议仍然拦截（防绕过）', () => {
+  assert.equal(policy.isBlockedUrl('foo://bar/baz'), true);
+  assert.equal(policy.isBlockedUrl('http://evil.example/x.png'), true);
+});

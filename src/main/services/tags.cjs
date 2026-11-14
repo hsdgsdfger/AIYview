@@ -29,6 +29,24 @@ function registerTagIpc() {
 
   handle('tag:detach', ({ imageId, tagId } = {}) => tags.detachTag(getDb(), imageId, tagId));
   handle('tag:get-or-create', ({ name, nameZh } = {}) => ({ id: tags.getOrCreateTag(getDb(), name, { nameZh }) }));
+
+  /** 侧栏「标签」区：按使用次数排的标签（带当前库内计数） */
+  handle('tag:top', ({ libraryId, limit = 40 } = {}) => {
+    const db = getDb();
+    if (libraryId == null) return [];
+    return db
+      .prepare(
+        `SELECT t.id, t.name, t.name_zh AS nameZh, t.category, COUNT(it.image_id) AS count
+         FROM image_tags it
+         JOIN tags t ON t.id = it.tag_id
+         JOIN images i ON i.id = it.image_id
+         WHERE i.library_id = ?
+         GROUP BY t.id
+         ORDER BY count DESC, t.post_count DESC
+         LIMIT ?`
+      )
+      .all(libraryId, limit);
+  });
 }
 
 /**

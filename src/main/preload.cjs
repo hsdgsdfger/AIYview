@@ -9,19 +9,20 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS = Object.freeze([
   'app:info',
   'db:status',
-  'library:list', 'library:register', 'library:remove',
+  'library:list', 'library:register', 'library:remove', 'library:pick',
+  'window:minimize', 'window:maximize', 'window:close', 'window:state',
   'scan:status', 'scan:run', 'scan:watch-stop',
   'browse:folders', 'browse:page', 'browse:count',
   'image:get', 'image:marks', 'image:age', 'image:dimensions', 'image:prompt',
   'thumb:get', 'thumb:cache-stats',
   'prompt:save', 'prompt:save-manual', 'prompt:list', 'prompt:get', 'prompt:update', 'prompt:remove',
   'tag:import-csv', 'tag:search', 'tag:suggest', 'tag:of-image', 'tag:attach', 'tag:detach',
-  'tag:run', 'tag:stop', 'tag:status', 'tag:import-dictionary', 'tag:get-or-create',
+  'tag:run', 'tag:stop', 'tag:status', 'tag:import-dictionary', 'tag:get-or-create', 'tag:top',
   'delete:trash', 'delete:list', 'delete:restore', 'delete:sweep',
   'settings:get', 'settings:set', 'settings:all',
 ]);
 
-const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress']);
+const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress', 'window:maximized']);
 
 async function invoke(channel, payload) {
   if (!CHANNELS.includes(channel)) {

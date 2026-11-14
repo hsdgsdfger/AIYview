@@ -17,13 +17,14 @@ function isAllowedNavigation(targetUrl) {
 
 function createMainWindow() {
   const win = new BrowserWindow({
-    width: 1280,
-    height: 820,
-    minWidth: 960,
-    minHeight: 600,
+    width: 1360,
+    height: 860,
+    minWidth: 1000,
+    minHeight: 620,
     show: false,
-    backgroundColor: '#111318',
-    title: 'YiziView Next',
+    frame: false, // 自绘标题栏（品牌 + 添加文件夹 + 布局/面板 + 窗口按钮）
+    backgroundColor: '#0d0f13',
+    title: 'YiziView',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -35,11 +36,32 @@ function createMainWindow() {
   });
 
   win.once('ready-to-show', () => win.show());
+
+  // 排障：把渲染层控制台（含 CSP/资源加载错误）落盘
+  if (process.argv.includes('--shot') || process.env.YIZI_DEBUG) {
+    const fs = require('node:fs');
+    const path2 = require('node:path');
+    const logPath = path2.join(require('electron').app.getPath('userData'), 'renderer.log');
+    win.webContents.on('console-message', (_e, level, message, line, sourceId) => {
+      try {
+        fs.appendFileSync(logPath, `[${level}] ${message} (${sourceId}:${line})\n`);
+      } catch {
+        /* 排障日志写失败不影响主流程 */
+      }
+    });
+  }
   win.webContents.setWindowOpenHandler(() => ({ action: 'deny' }));
   win.webContents.on('will-navigate', (event, url) => {
     if (!isAllowedNavigation(url)) event.preventDefault();
   });
   win.webContents.on('will-attach-webview', (event) => event.preventDefault());
+
+  // 最大化状态变化要通知渲染层切换按钮图标
+  const notifyMaximize = () => {
+    if (!win.isDestroyed()) win.webContents.send('window:maximized', win.isMaximized());
+  };
+  win.on('maximize', notifyMaximize);
+  win.on('unmaximize', notifyMaximize);
 
   if (DEV_SERVER_URL) {
     win.loadURL(DEV_SERVER_URL);

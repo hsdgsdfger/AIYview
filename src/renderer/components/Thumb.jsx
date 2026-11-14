@@ -3,15 +3,17 @@ import { observe, retryFailed } from '../thumbBus.js';
 import { useStore } from '../store.jsx';
 
 /**
- * 单张缩略图卡片：
- * - 可见才取图（共享 IntersectionObserver）
- * - 失败显示占位 + 手动重试，绝不回退原图
- * - 左上角「废」标记、右上角心数、分级遮挡三态（隐藏/遮罩/模糊），单图点击可临时解除
+ * 缩略图卡片：
+ * - 可见才取图（共享 IntersectionObserver + 批量 IPC）
+ * - 失败显示占位 + 重试，绝不回退原图
+ * - 分级三态遮挡（遮罩/模糊/隐藏），点一下临时解除
+ * - 瀑布流下按宽高比自然排版；网格下统一 1:1
  */
-export default function Thumb({ item, cellWidth, selected, onClick, onContext, onDouble }) {
+export default function Thumb({ item, uniform, selected, onClick, onContext, onDouble }) {
   const elRef = useRef(null);
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
+  const [ratio, setRatio] = useState(null); // 由 img 实际加载结果校正，避免高图被裁
   const { occlusion, revealed, actions } = useStore();
 
   useEffect(() => {
@@ -22,15 +24,13 @@ export default function Thumb({ item, cellWidth, selected, onClick, onContext, o
         setUrl(u);
         setFailed(false);
       } else {
-        setFailed((f) => f || true);
+        setFailed(true);
       }
     });
   }, [item.id]);
 
-  const aspect = item.width && item.height ? item.width / item.height : 1.4;
-  const height = Math.round(cellWidth / Math.min(Math.max(aspect, 0.45), 2.2));
-
-  // M3 遮挡判定：有分级且 ≥ 阈值 且未被单图解除
+  const fallbackAspect = item.width && item.height ? item.width / item.height : 0.72;
+  const aspect = ratio || fallbackAspect;
   const blocked = item.ageLevel != null
     && occlusion.threshold != null
     && item.ageLevel >= occlusion.threshold
@@ -40,19 +40,29 @@ export default function Thumb({ item, cellWidth, selected, onClick, onContext, o
     <div
       ref={elRef}
       className={`thumb ${selected ? 'selected' : ''} ${blocked ? 'occluded' : ''}`}
-      style={{ width: cellWidth }}
       onClick={(e) => onClick(item, e)}
       onDoubleClick={() => onDouble?.(item)}
       onContextMenu={(e) => onContext?.(item, e)}
+      title={item.file_name}
     >
       <div
-        className={`thumb-box ${blocked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
-        style={{ height }}
-        onClick={blocked ? () => actions.reveal(item.id) : undefined}
-        title={blocked ? '点击临时解除遮挡' : undefined}
+        className={`thumb-box ${uniform ? 'uniform' : ''} ${blocked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
+        style={uniform ? undefined : { aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}` }}
       >
         {url ? (
-          <img src={url} alt={item.file_name} draggable={false} loading="lazy" />
+          <img
+            src={url}
+            alt={item.file_name}
+            draggable={false}
+            decoding="async"
+            onLoad={(e) => {
+              const { naturalWidth: w, naturalHeight: h } = e.currentTarget;
+              if (w && h) {
+                const r = w / h;
+                if (!ratio || Math.abs(r - ratio) > 0.02) setRatio(r);
+              }
+            }}
+          />
         ) : (
           <div className={`thumb-placeholder ${failed ? 'failed' : ''}`}>
             {failed ? (
@@ -70,24 +80,25 @@ export default function Thumb({ item, cellWidth, selected, onClick, onContext, o
           </div>
         )}
 
-        {blocked && occlusion.mode === 'mask' && (
-          <div className="occlude-mask" onClick={() => actions.reveal(item.id)}>
-            <span>l{item.ageLevel} · 已遮挡</span>
-          </div>
-        )}
-        {blocked && occlusion.mode === 'hidden' && (
-          <div className="occlude-mask hidden-mode" onClick={() => actions.reveal(item.id)}>
-            <span>l{item.ageLevel} · 隐藏</span>
+        {blocked && occlusion.mode !== 'blur' && (
+          <div
+            className={`occlude-mask ${occlusion.mode === 'hidden' ? 'hidden-mode' : ''}`}
+            onClick={(e) => {
+              e.stopPropagation();
+              actions.reveal(item.id);
+            }}
+          >
+            <span>l{item.ageLevel} · 点击显示</span>
           </div>
         )}
 
         {item.rejected === 1 && <span className="badge reject">废</span>}
-        {item.heart > 0 && <span className="badge heart">{'♥'.repeat(Math.min(item.heart, 5))}</span>}
-        {item.ageLevel != null && (
-          <span className={`badge age age-${item.ageLevel}`}>l{item.ageLevel}</span>
+        {item.heart > 0 && (
+          <span className="badge heart">{'♥'.repeat(Math.min(item.heart, 5))}</span>
         )}
+        {item.ageLevel != null && <span className={`badge age age-${item.ageLevel}`}>l{item.ageLevel}</span>}
+        {selected && <span className="badge sel">✓</span>}
       </div>
-      <div className="thumb-name" title={item.rel_path}>{item.file_name}</div>
     </div>
   );
 }

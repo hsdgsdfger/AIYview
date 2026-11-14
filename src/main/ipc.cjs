@@ -20,6 +20,16 @@ function handle(channel, fn) {
       const data = await fn(payload || {}, _event);
       return { ok: true, data };
     } catch (error) {
+      if (process.env.YIZI_DEBUG) {
+        try {
+          const fs = require('node:fs');
+          const path = require('node:path');
+          const logPath = path.join(require('electron').app.getPath('userData'), 'ipc-errors.log');
+          fs.appendFileSync(logPath, `${channel} :: ${error.stack || error.message}\n`);
+        } catch {
+          /* 排障日志失败不影响调用 */
+        }
+      }
       return { ok: false, error: error.message, code: error.code || 'IPC_ERROR' };
     }
   });
