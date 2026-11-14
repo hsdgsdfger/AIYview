@@ -30,6 +30,7 @@ export function StoreProvider({ children }) {
   const [tagList, setTagList] = useState([]);
   const [selection, setSelection] = useState(new Set());
   const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2, strength: 100 });
+  const [sidebar, setSidebar] = useState({ width: 208, collapsed: false });
   const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
   const [revealed, setRevealed] = useState(new Set());
   const [tagging, setTagging] = useState(null);
@@ -92,6 +93,11 @@ export function StoreProvider({ children }) {
     window.yizi.settings.get({ key: 'occlusion' }).then((r) => {
       if (r.ok && r.data && typeof r.data === 'object') {
         setOcclusion((prev) => ({ ...prev, ...r.data }));
+      }
+    });
+    window.yizi.settings.get({ key: 'sidebar' }).then((r) => {
+      if (r.ok && r.data && typeof r.data === 'object') {
+        setSidebar((prev) => ({ ...prev, ...r.data }));
       }
     });
     window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
@@ -296,7 +302,7 @@ export function StoreProvider({ children }) {
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
-    tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
+    tagFilter, tagList, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
@@ -304,10 +310,13 @@ export function StoreProvider({ children }) {
       setRevealed(new Set());
       setOcclusion(next);
       window.yizi.settings.set({ key: 'occlusion', value: next });
-    }, loadMore, actions, say,
+    },
+    setSidebar,
+    saveSidebar: (next) => window.yizi.settings.set({ key: 'sidebar', value: next }),
+    loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
-    tagFilter, tagList, selection, occlusion, shortcuts, revealed, tagging, status, version, maximized,
+    tagFilter, tagList, selection, occlusion, sidebar, shortcuts, revealed, tagging, status, version, maximized,
     loadMore, actions, say]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;

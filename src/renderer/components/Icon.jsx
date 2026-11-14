@@ -18,6 +18,8 @@ const PATHS = {
   check: 'M5 13l4 4L19 7',
   x: 'M6 6l12 12M18 6L6 18',
   plus: 'M12 5v14M5 12h14',
+  'panel-collapse': 'M5 4v16M15 7l-5 5 5 5',
+  'panel-expand': 'M19 4v16M9 7l5 5-5 5',
 };
 
 export default function Icon({ name, size = 16, className = '', strokeWidth = 1.6 }) {
