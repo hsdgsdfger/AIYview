@@ -2,6 +2,7 @@
   "name": "yiziview-next",
   "version": "0.1.0",
   "private": true,
+  "author": "Firefly",
   "description": "本地 ComfyUI 图片浏览器 + 分级筛选器（M0 骨架）",
   "type": "module",
   "main": "src/main/main.cjs",
@@ -11,6 +12,8 @@
   "scripts": {
     "dev": "node scripts/dev.mjs",
     "build": "vite build && electron-builder --dir",
+    "prebuild": "electron-rebuild -f -w better-sqlite3",
+    "postbuild": "npm rebuild better-sqlite3",
     "build:renderer": "vite build",
     "start": "electron .",
     "smoke": "electron . --smoke",
@@ -39,7 +42,7 @@
     "appId": "com.yiziview.next",
     "productName": "YiziViewNext",
     "directories": {
-      "output": "release"
+      "output": "release/pkg2"
     },
     "files": [
       "dist/**/*",

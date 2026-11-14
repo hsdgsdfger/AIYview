@@ -54,6 +54,17 @@ function bootstrap() {
   if (SMOKE) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(() => {
+        try {
+          const { probeDatabase } = lazyDb();
+          const probe = probeDatabase(path.join(app.getPath('userData'), 'index.sqlite'));
+          log(
+            probe.ok
+              ? `[smoke] db ok=true current=${probe.current} tables=${probe.tables.length}`
+              : `[smoke] db ok=false code=${probe.code} error=${probe.error}`
+          );
+        } catch (error) {
+          log(`[smoke] db error ${error.message}`);
+        }
         log('[smoke] window-ready');
         app.exit(0);
       }, 300);

@@ -32,9 +32,16 @@ async function waitForServer(timeoutMs = 30000) {
   return false;
 }
 
+function cleanEnv() {
+  // 宿主终端可能带 ELECTRON_RUN_AS_NODE=1（如 WorkBuddy），会让 electron.exe 退化成纯 Node
+  const { ELECTRON_RUN_AS_NODE, NODE_OPTIONS, ...rest } = process.env;
+  return rest;
+}
+
 const vite = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['vite'], {
   cwd: root,
   stdio: 'inherit',
+  env: cleanEnv(),
   shell: process.platform === 'win32',
 });
 
@@ -49,7 +56,7 @@ if (await waitForServer()) {
   const electron = spawn(process.platform === 'win32' ? 'npx.cmd' : 'npx', ['electron', '.'], {
     cwd: root,
     stdio: 'inherit',
-    env: { ...process.env, VITE_DEV_SERVER_URL: `http://${HOST}:${PORT}` },
+    env: { ...cleanEnv(), VITE_DEV_SERVER_URL: `http://${HOST}:${PORT}` },
     shell: process.platform === 'win32',
   });
   electron.on('exit', (code) => {
