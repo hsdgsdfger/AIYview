@@ -1,17 +1,38 @@
 'use strict';
 
 const path = require('node:path');
-const { app, BrowserWindow, ipcMain, session } = require('electron');
+const { app, BrowserWindow, ipcMain, session, protocol } = require('electron');
 const { createMainWindow } = require('./window.cjs');
 const { applyNetworkPolicy } = require('./security.cjs');
+const { registerMediaProtocol } = require('./mediaProtocol.cjs');
+const { getDb, closeDb, ensureMediaRoots, thumbnailsDir, registerMediaRoot } = require('./db/database.cjs');
+const { registerBrowseIpc } = require('./services/browse.cjs');
+const { registerScanIpc } = require('./services/scanner.cjs');
+const { registerThumbIpc } = require('./services/thumbs.cjs');
+const { registerPromptIpc } = require('./services/prompts.cjs');
+const { registerPromptLibraryIpc } = require('./services/promptLibrary.cjs');
+const { registerTagIpc } = require('./services/tags.cjs');
+const { registerTrashIpc } = require('./services/trash.cjs');
+const { registerSettingsIpc } = require('./services/settings.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
 const IS_DEV = Boolean(DEV_SERVER_URL);
 
-/** 延迟到真正需要时才加载原生模块，M0 的窗口启动不依赖 better-sqlite3 的 ABI。 */
+/** 延迟到真正需要时才加载原生模块，窗口启动不依赖 better-sqlite3 的 ABI */
 function lazyDb() {
   return require('./db/open.cjs');
+}
+
+function log(line) {
+  process.stdout.write(`${line}\n`);
+}
+
+/** 主进程 → 渲染层广播 */
+function broadcast(event, payload) {
+  for (const win of BrowserWindow.getAllWindows()) {
+    if (!win.isDestroyed()) win.webContents.send(event, payload);
+  }
 }
 
 function registerIpc() {
@@ -34,10 +55,15 @@ function registerIpc() {
       return { ok: false, error: error.message, code: error.code || 'DB_UNAVAILABLE' };
     }
   });
-}
 
-function log(line) {
-  process.stdout.write(`${line}\n`);
+  registerBrowseIpc(broadcast);
+  registerScanIpc(broadcast);
+  registerThumbIpc();
+  registerPromptIpc();
+  registerPromptLibraryIpc();
+  registerTagIpc();
+  registerTrashIpc();
+  registerSettingsIpc();
 }
 
 function bootstrap() {
@@ -45,6 +71,11 @@ function bootstrap() {
     devServerUrl: DEV_SERVER_URL,
     onBlocked: (url) => log(`[net-policy] blocked ${url}`),
   });
+
+  const db = getDb();
+  ensureMediaRoots(db);
+  registerMediaRoot(thumbnailsDir());
+  registerMediaProtocol(protocol);
 
   registerIpc();
   const win = createMainWindow();
@@ -104,5 +135,9 @@ if (!app.requestSingleInstanceLock()) {
 
   app.on('window-all-closed', () => {
     if (process.platform !== 'darwin') app.quit();
+  });
+
+  app.on('will-quit', () => {
+    closeDb();
   });
 }

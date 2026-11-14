@@ -61,7 +61,7 @@ async function collectFiles(root, opts) {
     let entries;
     try {
       entries = await fs.readdir(root, { withFileTypes: true });
-    } catch (e) {
+    } catch {
       return [];
     }
     const out = [];
@@ -81,7 +81,7 @@ async function collectFiles(root, opts) {
     let entries;
     try {
       entries = await fs.readdir(dir, { withFileTypes: true });
-    } catch (e) {
+    } catch {
       continue; // 权限不足 / 目录已删
     }
 
@@ -135,7 +135,7 @@ async function scanFolder(root, opts = {}) {
     let stats = { size: 0, mtimeMs: 0 };
     try {
       stats = await fs.stat(fullPath);
-    } catch (e) { /* 文件在扫描过程中消失 */ }
+    } catch { /* 文件在扫描过程中消失 */ }
 
     let subDir = '';
     if (recursive) {

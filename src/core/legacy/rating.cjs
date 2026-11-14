@@ -92,8 +92,8 @@ function stripPromptDecorations(text) {
   return String(text || '')
     .replace(/<(?:lora|lyco|hypernet|embedding):[^>]*>/gi, ' ')
     .replace(/\(([^()]*?):\s*-?[\d.]+\)/g, ' $1 ')
-    .replace(/[{}\[\]]/g, ' ')
-    .replace(/\\([()])/g, '$1')
+    .replace(/[{}[\]]/g, ' ')
+    .replace(/\\([()])/g, String.fromCharCode(36)+"1")
     .replace(/::/g, ' ')
     .replace(/\s+/g, ' ')
     .trim();

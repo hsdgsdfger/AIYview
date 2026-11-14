@@ -38,7 +38,7 @@ class RatingStore {
     try {
       const raw = await this.fs.readFile(this.filePath, 'utf8');
       payload = JSON.parse(raw);
-    } catch (e) {
+    } catch {
       // 首次运行或文件损坏：从空表开始，不阻塞启动
       return { entries: 0, recovered: false };
     }
@@ -99,7 +99,6 @@ class RatingStore {
   async setMany(items) {
     let changed = 0;
     for (const item of items || []) {
-      // eslint-disable-next-line no-await-in-loop
       if (await this.set(item.filePath, item.rating)) changed++;
     }
     if (changed > 0) await this.flush();
@@ -143,7 +142,7 @@ class RatingStore {
       this.dirty = false;
       this.metrics.writes++;
       return true;
-    } catch (e) {
+    } catch {
       this.metrics.writeErrors++;
       await this.fs.unlink(tmp).catch(() => {});
       return false;

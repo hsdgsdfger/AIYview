@@ -21,7 +21,7 @@ function decodeCursor(cursor) {
   if (!cursor) return null;
   try {
     return JSON.parse(Buffer.from(String(cursor), 'base64url').toString('utf8'));
-  } catch (e) {
+  } catch {
     throw new Error('游标格式非法');
   }
 }

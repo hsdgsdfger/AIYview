@@ -23,6 +23,8 @@ const RESERVED_NAMES = new Set([
 ]);
 
 // Windows 非法字符 + C0/C1 控制字符
+// 文件名清洗需要显式匹配控制字符（刻意的），对 eslint 豁免
+// eslint-disable-next-line no-control-regex
 const ILLEGAL_CHARS = /[<>:"/\\|?*\u0000-\u001f\u0080-\u009f]/g;
 const MAX_FILENAME_LENGTH = 180;
 
@@ -204,8 +206,8 @@ async function applyBatchRename(planResult, opts = {}) {
     try {
       await fs.rename(item.from, tmp);
       staged.push({ ...item, tmp });
-    } catch (e) {
-      failed.push({ from: item.from, to: item.to, error: e.message });
+    } catch (error) {
+      failed.push({ from: item.from, to: item.to, error: error.message });
     }
   }
 
@@ -215,12 +217,13 @@ async function applyBatchRename(planResult, opts = {}) {
     try {
       await fs.rename(item.tmp, item.to);
       renamed++;
-    } catch (e) {
+    } catch {
       // 回滚这一条，别让文件卡在临时名上
       try {
         await fs.rename(item.tmp, item.from);
-      } catch (e2) { /* 尽力而为 */ }
-      failed.push({ from: item.from, to: item.to, error: e.message });
+      } catch (error) { /* 尽力而为 */
+        failed.push({ from: item.from, to: item.to, error: error.message });
+      }
     }
   }
 

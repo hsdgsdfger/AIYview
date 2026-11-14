@@ -66,7 +66,7 @@ class ThumbnailCacheStore {
       const raw = await this.fs.readFile(this.indexFile, 'utf8');
       const parsed = JSON.parse(raw);
       if (Array.isArray(parsed)) loaded = parsed;
-    } catch (e) { /* 首次运行或索引损坏 */ }
+    } catch { /* 首次运行或索引损坏 */ }
 
     // 按 atime 升序回填，保证 LRU 顺序正确
     loaded.sort((a, b) => (a.atime || 0) - (b.atime || 0));
@@ -89,7 +89,7 @@ class ThumbnailCacheStore {
     await Promise.all(probe.map(async (cachePath) => {
       try {
         await this.fs.access(cachePath);
-      } catch (e) {
+      } catch {
         this._drop(cachePath);
       }
     }));
@@ -113,7 +113,7 @@ class ThumbnailCacheStore {
     try {
       await this.fs.writeFile(this.indexFile, JSON.stringify(payload));
       this.dirty = false;
-    } catch (e) { /* 索引写失败不影响出图 */ }
+    } catch { /* 索引写失败不影响出图 */ }
   }
 
   /* ------------------------------ 查询/写入 ------------------------------ */

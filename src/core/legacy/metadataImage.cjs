@@ -17,10 +17,10 @@ const PNG_SIG = Buffer.from([0x89, 0x50, 0x4e, 0x47, 0x0d, 0x0a, 0x1a, 0x0a]);
 function safeInflate(buf) {
   try {
     return zlib.inflateSync(buf, { maxOutputLength: 8 * 1024 * 1024 });
-  } catch (e) {
+  } catch {
     try {
       return zlib.inflateRawSync(buf, { maxOutputLength: 8 * 1024 * 1024 });
-    } catch (e2) {
+    } catch {
       return null;
     }
   }
@@ -331,7 +331,7 @@ function simpleDims(buf, format) {
       const tags = parseTiff(buf, 0);
       return { width: Number(tags[0x0100]) || 0, height: Number(tags[0x0101]) || 0 };
     }
-  } catch (e) { /* ignore */ }
+  } catch { /* ignore */ }
   return { width: 0, height: 0 };
 }
 

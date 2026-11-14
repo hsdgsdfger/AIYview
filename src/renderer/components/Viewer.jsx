@@ -1,0 +1,160 @@
+import { useEffect, useMemo, useState } from 'react';
+import { useStore } from '../store.jsx';
+
+/**
+ * 全屏查看器（A3）：缩放/平移、心数快捷键、废标、分级标记、两级提示词面板。
+ * 一级 = 正负提示词；小箭头展开二级参数区（D3/D3b/D3c，默认收起）。
+ */
+export default function Viewer({ item, onClose, onNav }) {
+  const { actions } = useStore();
+  const [scale, setScale] = useState(1);
+  const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [info, setInfo] = useState(null);
+  const [prompt, setPrompt] = useState(null);
+  const [showParams, setShowParams] = useState(false);
+
+  useEffect(() => {
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+    setInfo(null);
+    setPrompt(null);
+    window.yizi.image.get({ id: item.id }).then((r) => r.ok && setInfo(r.data));
+    window.yizi.image.prompt({ id: item.id }).then((r) => r.ok && setPrompt(r.data));
+  }, [item.id]);
+
+  useEffect(() => {
+    const onKey = (e) => {
+      if (e.key === 'Escape') onClose();
+      if (e.key === 'ArrowLeft' || e.key === 'ArrowUp') onNav(-1);
+      if (e.key === 'ArrowRight' || e.key === 'ArrowDown') onNav(1);
+      if (e.key >= '1' && e.key <= '5') actions.setMarks([item.id], { heart: Number(e.key) });
+      if (e.key === '0') actions.setMarks([item.id], { heart: 0 });
+      if (e.key.toLowerCase() === 'x') actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 });
+      if (e.key === '+' || e.key === '=') setScale((s) => Math.min(8, s * 1.25));
+      if (e.key === '-') setScale((s) => Math.max(0.1, s / 1.25));
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [item, onClose, onNav, actions]);
+
+  const onWheel = (e) => {
+    e.preventDefault();
+    setScale((s) => Math.min(8, Math.max(0.1, e.deltaY > 0 ? s / 1.1 : s * 1.1)));
+  };
+
+  const onDrag = (e) => {
+    if (e.buttons !== 1) return;
+    setOffset((o) => ({ x: o.x + e.movementX, y: o.y + e.movementY }));
+  };
+
+  const url = useMemo(() => {
+    if (!info) return '';
+    return 'media://local/' + info.absPath.split('\\').join('/');
+  }, [info]);
+
+  return (
+    <div className="viewer" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      <div className="viewer-stage" onWheel={onWheel} onMouseMove={onDrag}>
+        {url ? (
+          <img
+            src={url}
+            alt={item.file_name}
+            draggable={false}
+            style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+          />
+        ) : (
+          <div className="thumb-placeholder" style={{ width: 320, height: 320 }}><span className="spin" /></div>
+        )}
+      </div>
+
+      <div className="viewer-side">
+        <div className="viewer-head">
+          <span className="viewer-name" title={item.rel_path}>{item.file_name}</span>
+          <button className="icon-btn" onClick={onClose}>✕</button>
+        </div>
+
+        <div className="viewer-actions">
+          <span className="heart-row">
+            {[0, 1, 2, 3, 4, 5].map((n) => (
+              <button
+                key={n}
+                className={`heart ${item.heart === n ? 'on' : ''}`}
+                onClick={() => actions.setMarks([item.id], { heart: n })}
+                title={`${n} 心`}
+              >{n === 0 ? '♡0' : '♥'.repeat(n)}</button>
+            ))}
+          </span>
+          <button
+            className={`btn ${item.rejected ? 'danger' : 'ghost'}`}
+            onClick={() => actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 })}
+          >{item.rejected ? '取消废标' : '标废'}</button>
+        </div>
+
+        <div className="viewer-age">
+          <span className="side-title">分级</span>
+          {[0, 1, 2, 3, 4].map((level) => (
+            <button
+              key={level}
+              className={`btn ghost ${item.ageLevel === level ? 'primary' : ''}`}
+              onClick={() => actions.setAge([item.id], item.ageLevel === level ? null : level)}
+            >l{level}</button>
+          ))}
+          {item.ageLevel == null && <span className="muted">未判定</span>}
+        </div>
+
+        <PromptPanel prompt={prompt} showParams={showParams} setShowParams={setShowParams} />
+        {info && <div className="viewer-meta muted">{info.ext} · {(info.size_bytes / 1024).toFixed(0)}KB · {info.width || '?'}×{info.height || '?'}</div>}
+      </div>
+    </div>
+  );
+}
+
+/** 两级提示词面板：一级只显示正负提示词，箭头展开二级参数 */
+function PromptPanel({ prompt, showParams, setShowParams }) {
+  if (!prompt) {
+    return <div className="prompt-panel"><div className="muted">没有嵌入的提示词元数据。</div></div>;
+  }
+  return (
+    <div className="prompt-panel">
+      <div className="prompt-block">
+        <div className="side-title">正向</div>
+        <p className="prompt-text">{prompt.positive || '—'}</p>
+      </div>
+      <div className="prompt-block">
+        <div className="side-title">负向</div>
+        <p className="prompt-text neg">{prompt.negative || '—'}</p>
+      </div>
+
+      <button className="btn ghost expand" onClick={() => setShowParams((v) => !v)}>
+        {showParams ? '▾ 收起参数' : '▸ 生成参数'}
+      </button>
+      {showParams && (
+        <div className="prompt-params">
+          <Param label="模型" value={prompt.model} />
+          <Param label="采样器" value={prompt.sampler} />
+          <Param label="步数" value={prompt.steps} />
+          <Param label="CFG" value={prompt.cfg} />
+          <Param label="种子" value={prompt.seed} />
+        </div>
+      )}
+
+      <button
+        className="btn ghost"
+        onClick={async () => {
+          const r = await window.yizi.prompt.save({ imageId: prompt.image_id });
+          if (r.ok) alert('已存入提示词库');
+        }}
+      >存入提示词库</button>
+    </div>
+  );
+}
+
+function Param({ label, value }) {
+  if (value == null || value === '') return null;
+  return (
+    <div className="param-row">
+      <span className="param-key">{label}</span>
+      <span className="param-val">{String(value)}</span>
+    </div>
+  );
+}

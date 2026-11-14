@@ -188,7 +188,7 @@ async function readMetadata(buf) {
     try {
       const prompts = extractPromptsFromJson(JSON.parse(result.workflow));
       if (prompts.length > 0) result.prompt = [...new Set(prompts)].join('\n\n');
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   }
 
   // prompt 字段本身是 API JSON 的情况
@@ -196,7 +196,7 @@ async function readMetadata(buf) {
     try {
       const prompts = extractPromptsFromJson(JSON.parse(result.prompt));
       if (prompts.length > 0) result.prompt_parsed = [...new Set(prompts)].join('\n\n');
-    } catch (e) { /* ignore */ }
+    } catch { /* ignore */ }
   } else if (result.prompt) {
     result.prompt_parsed = result.prompt;
   }

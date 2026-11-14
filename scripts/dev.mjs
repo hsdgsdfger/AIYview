@@ -34,7 +34,11 @@ async function waitForServer(timeoutMs = 30000) {
 
 function cleanEnv() {
   // 宿主终端可能带 ELECTRON_RUN_AS_NODE=1（如 WorkBuddy），会让 electron.exe 退化成纯 Node
-  const { ELECTRON_RUN_AS_NODE, NODE_OPTIONS, ...rest } = process.env;
+  const env = process.env;
+  const rest = {};
+  for (const k of Object.keys(env)) {
+    if (k !== 'ELECTRON_RUN_AS_NODE' && k !== 'NODE_OPTIONS') rest[k] = env[k];
+  }
   return rest;
 }
 
