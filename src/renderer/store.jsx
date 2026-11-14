@@ -236,6 +236,14 @@ export function StoreProvider({ children }) {
     reveal(id) {
       setRevealed((prev) => new Set(prev).add(id));
     },
+    /** 点已显示的遮挡图 → 恢复遮挡 */
+    unreveal(id) {
+      setRevealed((prev) => {
+        const next = new Set(prev);
+        next.delete(id);
+        return next;
+      });
+    },
     async startTagging() {
       if (libraryId == null) return;
       setTagging({ done: 0, total: 0 });
@@ -256,7 +264,7 @@ export function StoreProvider({ children }) {
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
-    setOcclusion, loadMore, actions, say,
+    setOcclusionWithReset: (next) => { setRevealed(new Set()); setOcclusion(next); }, loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
     tagFilter, tagList, selection, occlusion, revealed, tagging, status, version, maximized,

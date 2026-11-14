@@ -13,10 +13,11 @@ import { setSizePref } from '../thumbBus.js';
 export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
-    libraryId, scanning, scanProgress, occlusion, setOcclusion,
+    libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
+  const [heartVal, setHeartVal] = useState(0); // 本次选中后点击的心数（红心显示用）
 
   /* Ctrl + 滚轮 = 缩放瀑布流列数（原生监听才能可靠 preventDefault） */
   const columnsRef = useRef(columns);
@@ -101,6 +102,8 @@ export default function ImageArea({ onOpenViewer }) {
   const selectedIds = useMemo(() => [...selection], [selection]);
 
   /* 全部选中项都已标废 → 按钮变成「取消废」 */
+  useEffect(() => { setHeartVal(0); }, [selectedIds]);
+
   const allRejected = useMemo(() => {
     if (selectedIds.length === 0) return false;
     const map = new Map(items.map((it) => [it.id, it]));
@@ -140,51 +143,54 @@ export default function ImageArea({ onOpenViewer }) {
 
   return (
     <section className="content">
-      <div className="actionbar">
-        {selectedIds.length === 0 ? (
-          <span className="ab-muted">未选择</span>
-        ) : (
-          <>
-            <Hearts
-              value={0}
-              className="ab-hearts"
-              onChange={(n) => actions.setMarks(selectedIds, { heart: n })}
-            />
+      <div className={`actionbar ${selectedIds.length === 0 ? 'no-sel' : ''}`}>
+        {/* 常驻操作条：无选中时整排置灰，遮挡符号仍然可用 */}
+        <span className={`ab-disabled-wrap`}>
+          <Hearts
+            value={heartVal}
+            className="ab-hearts"
+            onChange={(n) => {
+              if (!selectedIds.length) return;
+              setHeartVal(n);
+              actions.setMarks(selectedIds, { heart: n });
+            }}
+          />
 
-            <button
-              className={`ab-btn ${allRejected ? 'warn' : ''}`}
-              title="点一下标废，再点一下取消废"
-              onClick={() => actions.setMarks(selectedIds, { rejected: allRejected ? 0 : 1 })}
-            >{allRejected ? '取消废' : '标废'}</button>
+          <button
+            className={`ab-btn ${allRejected ? 'warn' : ''}`}
+            title="点一下标废，再点一下取消废"
+            onClick={() => selectedIds.length && actions.setMarks(selectedIds, { rejected: allRejected ? 0 : 1 })}
+          >{allRejected ? '取消废' : '标废'}</button>
 
-            <span className="ab-group">
-              <span className="ab-label" title="Alt+1~5 快捷分级">分级</span>
-              {[0, 1, 2, 3, 4].map((lv) => (
-                <button
-                  key={lv}
-                  className="ab-btn tiny"
-                  title={`Alt+${lv + 1}`}
-                  onClick={() => actions.setAge(selectedIds, lv)}
-                >L{lv}</button>
-              ))}
-              <button className="ab-btn tiny" onClick={() => actions.setAge(selectedIds, null)}>清除</button>
-            </span>
+          <span className="ab-group">
+            <span className="ab-label" title="Alt+1~5 快捷分级">分级</span>
+            {[0, 1, 2, 3, 4].map((lv) => (
+              <button
+                key={lv}
+                className="ab-btn tiny"
+                title={`Alt+${lv + 1}`}
+                onClick={() => selectedIds.length && actions.setAge(selectedIds, lv)}
+              >L{lv}</button>
+            ))}
+            <button className="ab-btn tiny broom" title="清除分级（🧹）" onClick={() => selectedIds.length && actions.setAge(selectedIds, null)}>🧹</button>
+          </span>
 
-            <button
-              className="ab-btn danger"
-              onClick={() => {
-                if (confirm(`把 ${selectedIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
-                  actions.trash(selectedIds);
-                }
-              }}
-            ><Icon name="trash" size={13} /> 删除</button>
+          <button
+            className="ab-btn danger icon-only"
+            title="删除（移入系统回收站，12h 可撤回）"
+            onClick={() => {
+              if (!selectedIds.length) return;
+              if (confirm(`把 ${selectedIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
+                actions.trash(selectedIds);
+              }
+            }}
+          ><Icon name="trash" size={13} /></button>
+        </span>
 
-            {/* 原「取消」位置 → 遮挡二级菜单符号 */}
-            <OcclusionMenu occlusion={occlusion} setOcclusion={setOcclusion} />
+        {/* 遮挡二级菜单符号（全局设置，无选中也可用） */}
+        <OcclusionMenu occlusion={occlusion} setOcclusion={setOcclusionWithReset} />
 
-            <span className="ab-count">已选 {selectedIds.length} 张</span>
-          </>
-        )}
+        {selectedIds.length > 0 && <span className="ab-count">已选 {selectedIds.length} 张</span>}
 
         <span className="ab-right">
           {scanning && scanProgress && (
@@ -192,11 +198,6 @@ export default function ImageArea({ onOpenViewer }) {
               {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
             </span>
           )}
-
-          <button className="icon-btn" title="刷新列表" onClick={() => actions.refresh()}>
-            <Icon name="refresh" size={14} />
-          </button>
-
         </span>
       </div>
 

@@ -5,10 +5,11 @@ import Hearts from './Hearts.jsx';
 
 /**
  * 缩略图卡片：
- * - 可见才取图（共享 IntersectionObserver + 批量 IPC）
- * - 失败显示占位 + 重试，绝不回退原图
- * - 分级三态遮挡（遮罩/模糊/隐藏），点一下临时解除
- * - 瀑布流下按宽高比自然排版；网格下统一 1:1
+ * - 挂载即批量取图，失败显示占位 + 重试，绝不回退原图
+ * - 分级三态遮挡（遮罩/模糊/隐藏）：
+ *     · 达到阈值的图盖遮挡层，点一下临时显示（同时按正常规则选中）
+ *     · 再点一下恢复遮挡（遮挡层保持挂载，只是变透明）
+ *     · 全局遮挡设置（方式/阈值）一变，所有临时显示全部复位
  */
 export default function Thumb({ item, selected, onClick, onContext, onDouble }) {
   const elRef = useRef(null);
@@ -32,23 +33,34 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
 
   const fallbackAspect = item.width && item.height ? item.width / item.height : 0.72;
   const aspect = ratio || fallbackAspect;
-  const blocked = item.ageLevel != null
+
+  // 是否命中全局遮挡阈值（与临时显示状态无关）
+  const hitThreshold = item.ageLevel != null
     && occlusion.threshold != null
-    && item.ageLevel >= occlusion.threshold
-    && !revealed.has(item.id);
+    && item.ageLevel >= occlusion.threshold;
+  const isRevealed = revealed.has(item.id);
+  const masked = hitThreshold && !isRevealed;
+
+  const handleOverlayClick = (e) => {
+    e.stopPropagation();
+    // 切换显示/恢复遮挡，同时按正常规则选中
+    if (isRevealed) actions.unreveal(item.id);
+    else actions.reveal(item.id);
+    onClick(item, e);
+  };
 
   return (
     <div
       ref={elRef}
       data-thumb-id={item.id}
-      className={`thumb ${selected ? 'selected' : ''} ${blocked ? 'occluded' : ''}`}
+      className={`thumb ${selected ? 'selected' : ''} ${masked ? 'occluded' : ''}`}
       onClick={(e) => onClick(item, e)}
       onDoubleClick={() => onDouble?.(item)}
       onContextMenu={(e) => onContext?.(item, e)}
       title={item.file_name}
     >
       <div
-        className={`thumb-box ${blocked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
+        className={`thumb-box ${masked && occlusion.mode === 'blur' ? 'occlude-blur' : ''}`}
         style={{ aspectRatio: `${Math.min(Math.max(aspect, 0.3), 3.2)}` }}
       >
         {url ? (
@@ -82,17 +94,19 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
           </div>
         )}
 
-        {blocked && occlusion.mode !== 'blur' && (
+        {/* 遮挡层：命中阈值就常驻挂载；已显示时变透明，再点一下恢复遮挡 */}
+        {hitThreshold && (
           <div
-            className={`occlude-mask ${occlusion.mode === 'hidden' ? 'hidden-mode' : ''}`}
-            onClick={(e) => {
+            className={`occlude-mask ${occlusion.mode === 'hidden' ? 'hidden-mode' : ''} ${isRevealed ? 'revealed' : ''}`}
+            onClick={handleOverlayClick}
+            onDoubleClick={(e) => {
               e.stopPropagation();
-              actions.reveal(item.id);
-              // 遮罩盖住了整张卡：点一下既解除遮挡，也按正常规则选中
-              onClick(item, e);
+              onDouble?.(item);
             }}
+            title={isRevealed ? '点击恢复遮挡' : '点击显示'}
           >
-            <span>L{item.ageLevel} · 点击显示</span>
+            {!isRevealed && occlusion.mode !== 'blur' && <span>L{item.ageLevel} · 点击显示</span>}
+            {!isRevealed && occlusion.mode === 'blur' && <span>L{item.ageLevel}</span>}
           </div>
         )}
 

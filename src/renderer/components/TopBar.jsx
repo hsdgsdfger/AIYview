@@ -20,7 +20,7 @@ export default function TopBar() {
       </button>
 
       <div className="topbar-center">
-        <span className="tb-label" title="Alt + 鼠标滚轮也可缩放列数">面板：</span>
+        <span className="tb-label sr-only" title="Ctrl+滚轮缩放列数">列数</span>
         <div className="stepper">
           <button className="stepper-btn" onClick={() => setColumns(Math.max(1, columns - 1))} title="减少分栏">−</button>
           <span className="stepper-val">{columns}</span>
