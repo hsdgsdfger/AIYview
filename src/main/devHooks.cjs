@@ -15,14 +15,14 @@ function installDevHooks(win, log) {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
         try {
-          if (process.env.YIZI_CLICKTEST) {
+          if (process.env.AIY_CLICKTEST) {
             const c = await win.webContents.executeJavaScript(
               '(() => { const t = document.querySelector(".thumb"); if (!t) return "no-thumb"; t.dispatchEvent(new MouseEvent("click", { bubbles: true })); return "clicked"; })()'
             );
             log(`[click] ${c}`);
             await new Promise((r) => setTimeout(r, 500));
           }
-          if (process.env.YIZI_30COLS) {
+          if (process.env.AIY_30COLS) {
             await win.webContents.executeJavaScript(`(async () => {
               const c = document.querySelector(".canvas");
               for (let i = 0; i < 26; i++) c.dispatchEvent(new WheelEvent("wheel", { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }));
@@ -31,7 +31,7 @@ function installDevHooks(win, log) {
             await new Promise((r) => setTimeout(r, 2500));
             log('[30cols] sent');
           }
-          if (process.env.YIZI_BARINFO) {
+          if (process.env.AIY_BARINFO) {
             const r = await win.webContents.executeJavaScript(`(() => {
               const bar = document.querySelector(".actionbar");
               const items = [...bar.children].map((el) => { const r = el.getBoundingClientRect(); return (el.className||el.tagName) + "@" + Math.round(r.left) + ",w" + Math.round(r.width) + ":" + el.textContent.trim().slice(0,12); });
@@ -39,7 +39,7 @@ function installDevHooks(win, log) {
             })()`);
             log(`[barinfo] ${JSON.stringify(r)}`);
           }
-          if (process.env.YIZI_SELTEST) {
+          if (process.env.AIY_SELTEST) {
             const r = await win.webContents.executeJavaScript(
               `(async () => {
                  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -61,7 +61,7 @@ function installDevHooks(win, log) {
             );
             log(`[seltest] ${JSON.stringify(r)}`);
           }
-          if (process.env.YIZI_UITEST) {
+          if (process.env.AIY_UITEST) {
             const r = await win.webContents.executeJavaScript(
               `(async () => {
                  const wait = (ms) => new Promise((r) => setTimeout(r, ms));
@@ -86,12 +86,12 @@ function installDevHooks(win, log) {
             );
             log(`[uitest] ${JSON.stringify(r)}`);
           }
-          if (process.env.YIZI_ERRTEST) {
+          if (process.env.AIY_ERRTEST) {
             await win.webContents.executeJavaScript("setTimeout(() => { throw new Error('注入的渲染层错误'); }, 0)");
             await new Promise((r) => setTimeout(r, 600));
             log('[errtest] injected');
           }
-          if (process.env.YIZI_ORDERTEST) {
+          if (process.env.AIY_ORDERTEST) {
             const r = await win.webContents.executeJavaScript(`
               (async () => {
                 const ids = () => [...document.querySelectorAll('.thumb')].map((el) => el.dataset.thumbId).join(',');
@@ -107,10 +107,10 @@ function installDevHooks(win, log) {
             `);
             log(`[order] changed=${r.changed} head_before=${r.beforeHead.join('|')} head_after=${r.afterHead.join('|')}`);
           }
-          if (process.env.YIZI_STATS) {
+          if (process.env.AIY_STATS) {
             const s = await win.webContents.executeJavaScript(
               `(async () => {
-                 const st = await window.yizi.thumb['cache-stats']();
+                 const st = await window.aiyview.thumb['cache-stats']();
                  const imgs = document.querySelectorAll('.thumb-box img').length;
                  const cards = document.querySelectorAll('.thumb').length;
                  const spinners = document.querySelectorAll('.thumb-placeholder .spin').length;
@@ -119,19 +119,19 @@ function installDevHooks(win, log) {
             );
             log(`[stats] ${JSON.stringify(s)}`);
           }
-          if (process.env.YIZI_WHEELTEST) {
+          if (process.env.AIY_WHEELTEST) {
             const r = await win.webContents.executeJavaScript(`
               (() => {
-                const before = JSON.parse(JSON.stringify(window.__yiziDebug));
+                const before = JSON.parse(JSON.stringify(window.__aiyviewDebug));
                 const canvas = document.querySelector('.canvas');
                 canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }));
                 canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, ctrlKey: true, bubbles: true, cancelable: true }));
-                return new Promise((res) => setTimeout(() => res({ before: before.columns, after: window.__yiziDebug.columns }), 300));
+                return new Promise((res) => setTimeout(() => res({ before: before.columns, after: window.__aiyviewDebug.columns }), 300));
               })()
             `);
             log(`[wheel] columns ${r.before} -> ${r.after}`);
           }
-          const dbg = await win.webContents.executeJavaScript('JSON.stringify(window.__yiziDebug || null)');
+          const dbg = await win.webContents.executeJavaScript('JSON.stringify(window.__aiyviewDebug || null)');
           log(`[shot] debug ${dbg}`);
           const image = await win.webContents.capturePage();
           const out = path.join(app.getPath('userData'), 'shot.png');

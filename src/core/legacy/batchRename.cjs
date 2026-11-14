@@ -202,7 +202,7 @@ async function applyBatchRename(planResult, opts = {}) {
   // Phase 1: 全部挪到临时名，规避互换覆盖
   for (const item of actionable) {
     const dir = nodePath.dirname(item.from);
-    const tmp = nodePath.join(dir, `.yizi-rename-${crypto.randomBytes(4).toString('hex')}${nodePath.extname(item.from)}`);
+    const tmp = nodePath.join(dir, `.aiyview-rename-${crypto.randomBytes(4).toString('hex')}${nodePath.extname(item.from)}`);
     try {
       await fs.rename(item.from, tmp);
       staged.push({ ...item, tmp });

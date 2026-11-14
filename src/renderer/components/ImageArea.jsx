@@ -103,14 +103,14 @@ export default function ImageArea({ onOpenViewer }) {
 
   // 排障快照（--shot 时主进程会读取）
   if (typeof window !== 'undefined') {
-    window.__yiziDebug = {
+    window.__aiyviewDebug = {
       items: items.length,
       hasMore,
       loading,
       libraryId,
       columns,
       selected: selection.size,
-      pick: typeof window.yizi.library.pick,
+      pick: typeof window.aiyview.library.pick,
     };
   }
 

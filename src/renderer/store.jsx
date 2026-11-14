@@ -61,7 +61,7 @@ export function StoreProvider({ children }) {
     clearTimeout(viewTimerRef.current);
     viewTimerRef.current = setTimeout(() => {
       const s = stateRef.current;
-      window.yizi.settings.set({
+      window.aiyview.settings.set({
         key: 'view',
         value: {
           columns: s.columns,
@@ -86,14 +86,14 @@ export function StoreProvider({ children }) {
   /** 改排序：立刻重排列表，并记住到 settings */
   const setSort = useCallback((value) => {
     setSortState(value);
-    window.yizi.settings.set({ key: 'sort', value });
+    window.aiyview.settings.set({ key: 'sort', value });
   }, []);
 
   /** 改单个快捷键并持久化 */
   const setShortcut = useCallback((id, combo) => {
     setShortcuts((prev) => {
       const next = { ...prev, [id]: combo };
-      window.yizi.settings.set({ key: 'shortcuts', value: next });
+      window.aiyview.settings.set({ key: 'shortcuts', value: next });
       return next;
     });
   }, []);
@@ -101,7 +101,7 @@ export function StoreProvider({ children }) {
   /** 全部恢复默认 */
   const resetShortcuts = useCallback(() => {
     setShortcuts(DEFAULT_SHORTCUTS);
-    window.yizi.settings.set({ key: 'shortcuts', value: DEFAULT_SHORTCUTS });
+    window.aiyview.settings.set({ key: 'shortcuts', value: DEFAULT_SHORTCUTS });
   }, []);
 
   const run = useCallback(async (promise, action) => {
@@ -115,28 +115,28 @@ export function StoreProvider({ children }) {
 
   /* 主题恢复 + 窗口状态 + 排序恢复 */
   useEffect(() => {
-    window.yizi.settings.get({ key: 'theme' }).then((r) => {
+    window.aiyview.settings.get({ key: 'theme' }).then((r) => {
       if (r.ok && r.data) document.documentElement.setAttribute('data-theme', r.data);
     });
-    window.yizi.settings.get({ key: 'sort' }).then((r) => {
+    window.aiyview.settings.get({ key: 'sort' }).then((r) => {
       if (r.ok && r.data) setSortState(r.data);
     });
-    window.yizi.settings.get({ key: 'shortcuts' }).then((r) => {
+    window.aiyview.settings.get({ key: 'shortcuts' }).then((r) => {
       if (r.ok && r.data && typeof r.data === 'object') setShortcuts({ ...DEFAULT_SHORTCUTS, ...r.data });
     });
-    window.yizi.settings.get({ key: 'occlusion' }).then((r) => {
+    window.aiyview.settings.get({ key: 'occlusion' }).then((r) => {
       if (r.ok && r.data && typeof r.data === 'object') {
         setOcclusion((prev) => ({ ...prev, ...r.data }));
       }
     });
-    window.yizi.settings.get({ key: 'sidebar' }).then((r) => {
+    window.aiyview.settings.get({ key: 'sidebar' }).then((r) => {
       if (r.ok && r.data && typeof r.data === 'object') {
         setSidebar((prev) => ({ ...prev, ...r.data }));
       }
     });
-    window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
+    window.aiyview.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
     /* 瀑布流上次状态：列数 + 筛选 + 加载深度 + 滚动位置 */
-    window.yizi.settings.get({ key: 'view' }).then((r) => {
+    window.aiyview.settings.get({ key: 'view' }).then((r) => {
       const v = r.ok && r.data && typeof r.data === 'object' ? r.data : null;
       if (v) {
         if (Number(v.columns) >= 1 && Number(v.columns) <= 30) setColumns(Number(v.columns));
@@ -153,7 +153,7 @@ export function StoreProvider({ children }) {
       }
       viewBootedRef.current = true;
     });
-    return window.yizi.on('window:maximized', (v) => setMaximized(Boolean(v)));
+    return window.aiyview.on('window:maximized', (v) => setMaximized(Boolean(v)));
   }, []);
 
   /* 列数 / 筛选 / 已加载数量变化 → 记住 */
@@ -163,7 +163,7 @@ export function StoreProvider({ children }) {
 
   /* 初始库列表 */
   useEffect(() => {
-    window.yizi.library.list().then((res) => {
+    window.aiyview.library.list().then((res) => {
       if (res.ok && res.data.length > 0) {
         setLibraries(res.data);
         setLibraryId((cur) => cur ?? res.data[0].id);
@@ -174,10 +174,10 @@ export function StoreProvider({ children }) {
   /* 切库 → 目录树 + 标签栏 */
   useEffect(() => {
     if (libraryId == null) return;
-    window.yizi.browse.folders({ libraryId }).then((res) => {
+    window.aiyview.browse.folders({ libraryId }).then((res) => {
       if (res.ok) setFolders(res.data);
     });
-    window.yizi.tag.top({ libraryId, limit: 40 }).then((res) => {
+    window.aiyview.tag.top({ libraryId, limit: 40 }).then((res) => {
       if (res.ok) setTagList(res.data);
     });
     setFolder('');
@@ -199,7 +199,7 @@ export function StoreProvider({ children }) {
     if (s.loading || !s.hasMore || s.libraryId == null) return;
     setLoading(true);
     try {
-      const res = await window.yizi.browse.page({
+      const res = await window.aiyview.browse.page({
         libraryId: s.libraryId,
         cursor: s.cursor,
         limit: 60,
@@ -237,10 +237,10 @@ export function StoreProvider({ children }) {
 
   /* 主进程事件 */
   useEffect(() => {
-    const offProgress = window.yizi.on('scan:progress', (p) => setScanProgress(p));
+    const offProgress = window.aiyview.on('scan:progress', (p) => setScanProgress(p));
     // 扫描/标记等后台变更不再强制刷新列表：排序只在用户主动改排序/切目录时才变
-    const offChanged = window.yizi.on('browse:changed', () => { /* 保持列表稳定 */ });
-    const offTag = window.yizi.on('tag:progress', (p) => {
+    const offChanged = window.aiyview.on('browse:changed', () => { /* 保持列表稳定 */ });
+    const offTag = window.aiyview.on('tag:progress', (p) => {
       if (p && p.finished) return;
       setTagging(p);
     });
@@ -254,7 +254,7 @@ export function StoreProvider({ children }) {
   const actions = useMemo(() => ({
     /** 添加文件夹：系统目录选择框 → 注册（同路径幂等）→ 自动扫描 */
     async addFolder() {
-      const data = await run(window.yizi.library.pick(), '添加文件夹');
+      const data = await run(window.aiyview.library.pick(), '添加文件夹');
       if (!data || data.canceled || !data.libraries || data.libraries.length === 0) return;
       setLibraries((prev) => {
         const map = new Map(prev.map((l) => [l.id, l]));
@@ -265,7 +265,7 @@ export function StoreProvider({ children }) {
       setLibraryId(target.id);
       say(`已添加「${target.name}」，开始扫描…`);
       setScanning(true);
-      const summary = await run(window.yizi.scan.run({ libraryId: target.id }), '扫描');
+      const summary = await run(window.aiyview.scan.run({ libraryId: target.id }), '扫描');
       setScanning(false);
       setScanProgress(null);
       if (summary) {
@@ -275,7 +275,7 @@ export function StoreProvider({ children }) {
     async scanCurrent() {
       if (libraryId == null) return;
       setScanning(true);
-      const summary = await run(window.yizi.scan.run({ libraryId }), '扫描');
+      const summary = await run(window.aiyview.scan.run({ libraryId }), '扫描');
       setScanning(false);
       setScanProgress(null);
       if (summary) {
@@ -287,24 +287,24 @@ export function StoreProvider({ children }) {
       setVersion((v) => v + 1);
     },
     async removeLibrary(id) {
-      await run(window.yizi.library.remove({ id }), '移除图库');
+      await run(window.aiyview.library.remove({ id }), '移除图库');
       setLibraries((prev) => prev.filter((l) => l.id !== id));
       setLibraryId((cur) => (cur === id ? null : cur));
     },
     async setMarks(ids, patch) {
-      const res = await run(window.yizi.image.marks({ ids, ...patch }), '标记');
+      const res = await run(window.aiyview.image.marks({ ids, ...patch }), '标记');
       if (res) {
         setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ...patch } : it)));
         // 任何标记都不重排列表（用户硬要求：只有主动改排序才变）
       }
     },
     async setAge(ids, level) {
-      await run(window.yizi.image.age({ ids, level, source: 'manual' }), '分级');
+      await run(window.aiyview.image.age({ ids, level, source: 'manual' }), '分级');
       setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ageLevel: level, ageSource: 'manual' } : it)));
       // 分级也不重排
     },
     async trash(ids) {
-      const res = await run(window.yizi.delete.trash({ ids }), '删除');
+      const res = await run(window.aiyview.delete.trash({ ids }), '删除');
       if (res) {
         const gone = new Set(ids);
         setItems((prev) => prev.filter((it) => !gone.has(it.id)));
@@ -344,7 +344,7 @@ export function StoreProvider({ children }) {
     async startTagging() {
       if (libraryId == null) return;
       setTagging({ done: 0, total: 0 });
-      const r = await run(window.yizi.tag.run({ libraryId }), '打标');
+      const r = await run(window.aiyview.tag.run({ libraryId }), '打标');
       setTagging(null);
       if (r) {
         const failed = r.failed ? `，${r.failed} 张失败${r.firstError ? `（${r.firstError}）` : ''}` : '';
@@ -352,7 +352,7 @@ export function StoreProvider({ children }) {
       }
     },
     async stopTagging() {
-      await run(window.yizi.tag.stop(), '停止打标');
+      await run(window.aiyview.tag.stop(), '停止打标');
     },
   }), [libraryId, run, say]);
 
@@ -366,10 +366,10 @@ export function StoreProvider({ children }) {
     setOcclusionWithReset: (next) => {
       setRevealed(new Set());
       setOcclusion(next);
-      window.yizi.settings.set({ key: 'occlusion', value: next });
+      window.aiyview.settings.set({ key: 'occlusion', value: next });
     },
     setSidebar,
-    saveSidebar: (next) => window.yizi.settings.set({ key: 'sidebar', value: next }),
+    saveSidebar: (next) => window.aiyview.settings.set({ key: 'sidebar', value: next }),
     restore, rememberScroll,
     loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,

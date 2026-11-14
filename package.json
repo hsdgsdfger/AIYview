@@ -1,9 +1,9 @@
 {
-  "name": "yiziview-next",
+  "name": "aiyview",
   "version": "0.1.0",
   "private": true,
-  "author": "Firefly",
-  "description": "本地 ComfyUI 图片浏览器 + 分级筛选器（M0 骨架）",
+  "author": "AIYview",
+  "description": "本地 ComfyUI 图片浏览器 + 分级筛选器",
   "type": "module",
   "main": "src/main/main.cjs",
   "engines": {
@@ -16,6 +16,10 @@
     "prebuild": "node scripts/set-native-abi.mjs --electron",
     "postbuild": "node scripts/set-native-abi.mjs --node",
     "build:renderer": "vite build",
+    "repack": "node scripts/repack-asar.mjs",
+    "prune": "node scripts/prune-dist.mjs",
+    "pack:win": "node scripts/repack-asar.mjs && node scripts/prune-dist.mjs",
+    "scan:secrets": "node scripts/scan-secrets.mjs",
     "start": "electron .",
     "smoke": "electron . --smoke",
     "lint": "eslint .",
@@ -41,8 +45,9 @@
     "vite": "^7.2.4"
   },
   "build": {
-    "appId": "com.yiziview.next",
-    "productName": "YiziViewNext",
+    "appId": "com.aiyview.app",
+    "productName": "AIYview",
+    "artifactName": "AIYview-${version}-${arch}.${ext}",
     "directories": {
       "output": "release/pkg2"
     },
@@ -53,7 +58,17 @@
       "package.json"
     ],
     "win": {
-      "target": "dir"
+      "target": [
+        "dir",
+        "nsis",
+        "zip"
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "deleteAppDataOnUninstall": false
     }
   }
 }

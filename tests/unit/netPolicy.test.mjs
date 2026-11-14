@@ -42,7 +42,7 @@ test('shouldAllowRequest 是取反的便捷封装', () => {
 
 test('media:// 是本地只读协议，不当作网络请求拦截', () => {
   assert.equal(policy.isBlockedUrl('media://local/D:/pics/a.png'), false);
-  assert.equal(policy.isBlockedUrl('media://local/C:/Users/x/AppData/Roaming/yiziview-next/thumbnails/abc_320.jpg'), false);
+  assert.equal(policy.isBlockedUrl('media://local/C:/Users/x/AppData/Roaming/aiyview/thumbnails/abc_320.jpg'), false);
 });
 
 test('media: 之外的自定义协议仍然拦截（防绕过）', () => {

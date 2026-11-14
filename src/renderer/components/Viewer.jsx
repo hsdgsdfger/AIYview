@@ -20,8 +20,8 @@ export default function Viewer({ item, onClose, onNav }) {
     setOffset({ x: 0, y: 0 });
     setInfo(null);
     setPrompt(null);
-    window.yizi.image.get({ id: item.id }).then((r) => r.ok && setInfo(r.data));
-    window.yizi.image.prompt({ id: item.id }).then((r) => r.ok && setPrompt(r.data));
+    window.aiyview.image.get({ id: item.id }).then((r) => r.ok && setInfo(r.data));
+    window.aiyview.image.prompt({ id: item.id }).then((r) => r.ok && setPrompt(r.data));
   }, [item.id]);
 
   useEffect(() => {
@@ -169,7 +169,7 @@ function PromptPanel({ prompt, showParams, setShowParams }) {
       <button
         className="btn ghost"
         onClick={async () => {
-          const r = await window.yizi.prompt.save({ imageId: prompt.image_id });
+          const r = await window.aiyview.prompt.save({ imageId: prompt.image_id });
           if (r.ok) alert('已存入提示词库');
         }}
       >存入提示词库</button>

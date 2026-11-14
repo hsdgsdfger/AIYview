@@ -30,7 +30,7 @@ function earlyUserData() {
     return app.getPath('userData');
   } catch {
     const base = process.env.APPDATA || process.env.LOCALAPPDATA || require('node:os').tmpdir();
-    return path.join(base, 'yiziview-next');
+    return path.join(base, 'aiyview');
   }
 }
 

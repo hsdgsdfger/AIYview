@@ -52,5 +52,5 @@ api.on = (event, callback) => {
   };
 };
 
-contextBridge.exposeInMainWorld('yizi', api);
-contextBridge.exposeInMainWorld('yiziChannels', CHANNELS);
+contextBridge.exposeInMainWorld('aiyview', api);
+contextBridge.exposeInMainWorld('aiyviewChannels', CHANNELS);

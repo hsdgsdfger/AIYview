@@ -1,7 +1,7 @@
 import { useStore } from '../store.jsx';
 import Icon from './Icon.jsx';
 
-/** 顶栏：品牌 + 添加文件夹 + 布局/面板 + 设置 + 窗口控制（对应原版 YiZi view 头部） */
+/** 顶栏：品牌 + 添加文件夹 + 布局/面板 + 设置 + 窗口控制（对应原版 AIYview 头部） */
 export default function TopBar() {
   const {
     columns, setColumns, scanning, actions, maximized, say,
@@ -11,7 +11,7 @@ export default function TopBar() {
     <header className="topbar">
       <div className="brand">
         <span className="brand-mark">☯</span>
-        <span className="brand-text">YiZi<em>view</em></span>
+        <span className="brand-text">AIY<em>view</em></span>
       </div>
 
       <button className="add-folder" onClick={() => actions.addFolder()} title="选择文件夹并加入图库">
@@ -36,7 +36,7 @@ export default function TopBar() {
             const el = document.documentElement;
             const light = el.getAttribute('data-theme') === 'light';
             el.setAttribute('data-theme', light ? 'dark' : 'light');
-            window.yizi.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
+            window.aiyview.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
           }}
         ><Icon name="gear" size={15} /></button>
         <button
@@ -46,11 +46,11 @@ export default function TopBar() {
         ><Icon name="refresh" size={15} className={scanning ? 'spin-icon' : ''} /></button>
 
         <div className="win-controls">
-          <button onClick={() => window.yizi.window.minimize()} title="最小化">–</button>
-          <button onClick={() => window.yizi.window.maximize()} title={maximized ? '还原' : '最大化'}>
+          <button onClick={() => window.aiyview.window.minimize()} title="最小化">–</button>
+          <button onClick={() => window.aiyview.window.maximize()} title={maximized ? '还原' : '最大化'}>
             {maximized ? '❐' : '□'}
           </button>
-          <button className="close" onClick={() => window.yizi.window.close()} title="关闭">✕</button>
+          <button className="close" onClick={() => window.aiyview.window.close()} title="关闭">✕</button>
         </div>
       </div>
       {scanning && <span className="sr-status" onClick={() => say('扫描进行中')}>扫描中…</span>}

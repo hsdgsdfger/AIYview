@@ -222,7 +222,7 @@ export default function Sidebar() {
               className="side-item"
               onClick={async () => {
                 const name = tagQuery.trim();
-                const r = await window.yizi.tag['get-or-create']({ name });
+                const r = await window.aiyview.tag['get-or-create']({ name });
                 if (r.ok) {
                   setTagFilter({ id: r.data.id, name });
                   setTagQuery('');

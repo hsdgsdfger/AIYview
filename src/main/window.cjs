@@ -24,7 +24,7 @@ function createMainWindow() {
     show: true, // 立即显示：隐藏窗口在部分机器上不会产生首帧，ready-to-show 永不触发（会表现为「双击没反应」）
     frame: false, // 自绘标题栏（品牌 + 添加文件夹 + 布局/面板 + 窗口按钮）
     backgroundColor: '#0d0f13', // 深色底遮住首帧白闪
-    title: 'YiziView',
+    title: 'AIYview',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
       contextIsolation: true,
@@ -67,7 +67,7 @@ function createMainWindow() {
   win.once('closed', () => clearTimeout(forceShow));
 
   // 排障：把渲染层控制台（含 CSP/资源加载错误）落盘
-  if (process.argv.includes('--shot') || process.env.YIZI_DEBUG) {
+  if (process.argv.includes('--shot') || process.env.AIY_DEBUG) {
     const fs = require('node:fs');
     const path2 = require('node:path');
     const logPath = path2.join(require('electron').app.getPath('userData'), 'renderer.log');

@@ -7,7 +7,7 @@ import './styles.css';
    白屏/点了没反应时能查到具体报错，而不是只有一句「打不开」 */
 function report(level, message, extra) {
   try {
-    window.yizi.invoke('log:renderer', { level, message: String(message).slice(0, 1200), extra });
+    window.aiyview.invoke('log:renderer', { level, message: String(message).slice(0, 1200), extra });
   } catch {
     /* 日志通道不可用时忽略 */
   }

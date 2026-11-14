@@ -81,8 +81,8 @@ export default function BottomBar() {
                 <div className="settings-sep" />
                 <button
                   onClick={async () => {
-                    const r = await window.yizi.app['log-open']();
-                    if (!r || !r.ok) window.yizi.app['log-path']();
+                    const r = await window.aiyview.app['log-open']();
+                    if (!r || !r.ok) window.aiyview.app['log-path']();
                     setSettingsOpen(false);
                   }}
                 >
@@ -95,7 +95,7 @@ export default function BottomBar() {
                     const el = document.documentElement;
                     const light = el.getAttribute('data-theme') === 'light';
                     el.setAttribute('data-theme', light ? 'dark' : 'light');
-                    window.yizi.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
+                    window.aiyview.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
                     setSettingsOpen(false);
                   }}
                 >
@@ -122,10 +122,10 @@ function Panel({ name, onClose }) {
     let alive = true;
     (async () => {
       if (name === 'trash') {
-        const r = await window.yizi.delete.list();
+        const r = await window.aiyview.delete.list();
         if (alive && r.ok) setRows(r.data);
       } else {
-        const r = await window.yizi.prompt.list({ limit: 100, search: search || undefined });
+        const r = await window.aiyview.prompt.list({ limit: 100, search: search || undefined });
         if (alive && r.ok) setList(r.data.items);
       }
     })();
@@ -149,9 +149,9 @@ function Panel({ name, onClose }) {
             <button
               className="btn"
               onClick={async () => {
-                const res = await window.yizi.delete.restore({ id: r.id });
+                const res = await window.aiyview.delete.restore({ id: r.id });
                 say(res.ok ? `已还原 ${r.rel_path}` : `还原失败: ${res.error}`);
-                const refreshed = await window.yizi.delete.list();
+                const refreshed = await window.aiyview.delete.list();
                 if (refreshed.ok) setRows(refreshed.data);
               }}
             >撤回</button>

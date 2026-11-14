@@ -48,7 +48,7 @@ async function flush() {
   counters.batch++;
   counters.req += batch.length;
 
-  const res = await window.yizi.thumb.get({ ids: batch, size: sizePref });
+  const res = await window.aiyview.thumb.get({ ids: batch, size: sizePref });
   if (!res || !res.ok) {
     for (const id of batch) {
       inflight.delete(id);

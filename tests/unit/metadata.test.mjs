@@ -47,7 +47,7 @@ test('JPEG APP1 EXIF: UNICODE UserComment 按 UTF-16BE 解出 A1111 参数', asy
   assert.equal(meta.width, 64);
   assert.match(meta.positive, /masterpiece/);
   assert.equal(meta.params['CFG scale'], '7');
-  assert.equal(meta.exif.make, 'YiziView');
+  assert.equal(meta.exif.make, 'AIYview');
   assert.equal(meta.exif.model, 'FixtureCam');
   assert.equal(meta.exif.orientation, 1);
 });

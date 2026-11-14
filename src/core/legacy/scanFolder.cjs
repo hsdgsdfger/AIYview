@@ -24,7 +24,7 @@ const DEFAULT_IMAGE_EXT = [
   '.mp4', '.webm', '.mov', '.mkv'
 ];
 
-const DEFAULT_IGNORE_DIRS = ['.git', 'node_modules', '.vscode', 'build', 'dist', '.yizi-thumbnails', '.thumbcache'];
+const DEFAULT_IGNORE_DIRS = ['.git', 'node_modules', '.vscode', 'build', 'dist', '.aiyview-thumbnails', '.thumbcache'];
 
 /**
  * 有界并发 map，保持输入顺序（p-limit 语义的精简实现）。

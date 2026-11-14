@@ -3,7 +3,7 @@ dist/
 release/
 *.log
 
-# 本地库文件（真库在 <图库根>/.yiziview/ 下，不随仓库走）
+# 本地库文件（真库在 <图库根>/.aiyview/ 下，不随仓库走）
 *.sqlite
 *.sqlite-wal
 *.sqlite-shm
@@ -11,7 +11,7 @@ release/
 *.db-wal
 *.db-shm
 /tmp/
-.yiziview/
+.aiyview/
 
 # 模型不进仓库（放 Release assets 或本地 models/）
 models/
@@ -19,3 +19,15 @@ models/
 
 # Electron ABI 原生副本（本地编译产物）
 .native/
+
+# 打包产物与缓存（绝不进仓库：里面含用户库、旧 asar、模型、日志）
+*.asar
+*.asar.unpacked/
+.cache/
+coverage/
+.eslintcache
+Thumbs.db
+.DS_Store
+
+# 发布用压缩包（只作为 Release 附件上传，不进仓库）
+*.zip

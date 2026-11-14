@@ -14,14 +14,14 @@ export default function TagPanel({ onClose }) {
       setSuggestions([]);
       return;
     }
-    const r = await window.yizi.tag.suggest({ prefix: text.trim(), limit: 10 });
+    const r = await window.aiyview.tag.suggest({ prefix: text.trim(), limit: 10 });
     if (r.ok) setSuggestions(r.data);
   };
 
   const applyFilter = async (tag) => {
     let id = tag.id;
     if (tag.custom || id < 0) {
-      const r = await window.yizi.tag['get-or-create']({ name: tag.name });
+      const r = await window.aiyview.tag['get-or-create']({ name: tag.name });
       if (!r.ok) {
         say(r.error);
         return;
@@ -38,13 +38,13 @@ export default function TagPanel({ onClose }) {
     const ids = [...selection];
     let written = 0;
     for (const name of pending) {
-      const r = await window.yizi.tag['get-or-create']({ name });
+      const r = await window.aiyview.tag['get-or-create']({ name });
       if (!r.ok) {
         say(r.error);
         continue;
       }
       for (const id of ids) {
-        const a = await window.yizi.tag.attach({ imageId: id, names: [name], origin: 'manual' });
+        const a = await window.aiyview.tag.attach({ imageId: id, names: [name], origin: 'manual' });
         if (a.ok) written += 1;
       }
     }

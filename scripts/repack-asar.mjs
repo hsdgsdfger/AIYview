@@ -64,6 +64,11 @@ run(['extract', targetAsar, work]);
 console.log('[repack] 覆盖 dist…');
 fs.rmSync(path.join(work, 'dist'), { recursive: true, force: true });
 copyDir(path.join(root, 'dist'), path.join(work, 'dist'));
+
+// package.json 也要同步：app.getName() / productName / userData 目录都由它决定，
+// 只换 dist+src 会让应用仍以旧名字启动（数据目录、标题、app:info 全是旧值）。
+console.log('[repack] 覆盖 package.json…');
+fs.copyFileSync(path.join(root, 'package.json'), path.join(work, 'package.json'));
 if (!distOnly) {
   console.log('[repack] 覆盖 src…');
   fs.rmSync(path.join(work, 'src'), { recursive: true, force: true });

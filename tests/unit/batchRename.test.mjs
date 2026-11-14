@@ -70,7 +70,7 @@ test('planBatchRename: 结果未变化则跳过', () => {
 });
 
 test('applyBatchRename: 互换文件名不会互相覆盖', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'yizi-rename-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aiyview-rename-'));
   try {
     await fs.writeFile(path.join(dir, 'a.png'), 'AAA');
     await fs.writeFile(path.join(dir, 'b.png'), 'BBB');
@@ -96,7 +96,7 @@ test('applyBatchRename: 互换文件名不会互相覆盖', async () => {
 });
 
 test('applyBatchRename: dryRun 不落盘', async () => {
-  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'yizi-rename-dry-'));
+  const dir = await fs.mkdtemp(path.join(os.tmpdir(), 'aiyview-rename-dry-'));
   try {
     await fs.writeFile(path.join(dir, 'x.png'), 'X');
     const plan = { plan: [{ from: path.join(dir, 'x.png'), to: path.join(dir, 'y.png'), name: 'y.png', skip: false }] };

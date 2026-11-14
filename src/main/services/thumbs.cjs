@@ -102,7 +102,7 @@ async function getThumbnails({ ids, size = 'sm', priority = PRIORITY.NEAR } = {}
           h: row.height,
         };
       } catch (error) {
-        if (process.env.YIZI_DEBUG) {
+        if (process.env.AIY_DEBUG) {
           try {
             const fs = require('node:fs');
             const logPath = require('node:path').join(

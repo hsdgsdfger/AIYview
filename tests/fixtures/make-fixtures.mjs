@@ -237,7 +237,7 @@ export async function makeFixtures() {
   // 5) JPEG + APP1 EXIF UserComment（UNICODE）
   files.jpgExif = path.join(OUT_DIR, 'a1111_exif.jpg');
   const jpgTiff = buildTiff([
-    { tag: 0x010f, type: 2, values: 'YiziView' },
+    { tag: 0x010f, type: 2, values: 'AIYview' },
     { tag: 0x0110, type: 2, values: 'FixtureCam' },
     { tag: 0x0112, type: 3, values: 1 },
     { tag: 0x9286, type: 7, values: unicodeUserComment(A1111_PARAMETERS) }

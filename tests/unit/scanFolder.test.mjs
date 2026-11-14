@@ -9,7 +9,7 @@ import scanPkg from '../../src/core/legacy/scanFolder.cjs';
 const { scanFolder, mapLimit } = scanPkg;
 
 async function makeTree() {
-  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'yizi-scan-'));
+  const root = await fs.mkdtemp(path.join(os.tmpdir(), 'aiyview-scan-'));
   await fs.mkdir(path.join(root, 'sub1', 'deep'), { recursive: true });
   await fs.mkdir(path.join(root, 'sub2'), { recursive: true });
   await fs.mkdir(path.join(root, 'node_modules'), { recursive: true });
@@ -92,7 +92,7 @@ test('stat 并发不超过 concurrency 上限', async () => {
 });
 
 test('目录不存在：返回空数组而非抛错', async () => {
-  const images = await scanFolder(path.join(os.tmpdir(), 'definitely-not-exists-yizi'), {});
+  const images = await scanFolder(path.join(os.tmpdir(), 'definitely-not-exists-aiyview'), {});
   assert.deepEqual(images, []);
 });
 

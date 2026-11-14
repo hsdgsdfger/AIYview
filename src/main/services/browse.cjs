@@ -15,7 +15,7 @@ function registerBrowseIpc(broadcast) {
   });
 
   handle('browse:page', (q) => {
-    if (process.env.YIZI_DEBUG) {
+    if (process.env.AIY_DEBUG) {
       try {
         require('node:fs').appendFileSync(
           require('node:path').join(require('electron').app.getPath('userData'), 'page-debug.log'),
