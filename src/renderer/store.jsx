@@ -31,6 +31,8 @@ export function StoreProvider({ children }) {
   const [selection, setSelection] = useState(new Set());
   const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2, strength: 100 });
   const [sidebar, setSidebar] = useState({ width: 208, collapsed: false });
+  /** 上次瀑布流的滚动位置与已加载数量（启动时据此续上） */
+  const [restore, setRestore] = useState(null);
   const [shortcuts, setShortcuts] = useState(DEFAULT_SHORTCUTS);
   const [revealed, setRevealed] = useState(new Set());
   const [tagging, setTagging] = useState(null);
@@ -42,12 +44,44 @@ export function StoreProvider({ children }) {
   stateRef.current = {
     libraryId, folder, cursor, loading, hasMore, sort,
     heartOnly, untagged, rejectedOnly, ageMax, nameLike, tagFilter,
+    columns, items,
   };
 
   const say = useCallback((text) => {
     setStatus(text);
     if (text) setTimeout(() => setStatus((s) => (s === text ? '' : s)), 3200);
   }, []);
+
+  /* 瀑布流视图状态（列数/筛选/滚动位置）→ settings.view，防抖写盘 */
+  const viewBootedRef = useRef(false);
+  const viewTimerRef = useRef(null);
+  const scrollTopRef = useRef(0);
+  const persistView = useCallback(() => {
+    if (!viewBootedRef.current) return;
+    clearTimeout(viewTimerRef.current);
+    viewTimerRef.current = setTimeout(() => {
+      const s = stateRef.current;
+      window.yizi.settings.set({
+        key: 'view',
+        value: {
+          columns: s.columns,
+          heartOnly: s.heartOnly,
+          untagged: s.untagged,
+          rejectedOnly: s.rejectedOnly,
+          ageMax: s.ageMax,
+          nameLike: s.nameLike,
+          itemCount: (s.items || []).length,
+          scrollTop: Math.round(scrollTopRef.current || 0),
+        },
+      });
+    }, 500);
+  }, []);
+
+  /** 滚动位置只记数，不进 React 状态，免得每滚一下重渲染整栅格 */
+  const rememberScroll = useCallback((top) => {
+    scrollTopRef.current = top;
+    persistView();
+  }, [persistView]);
 
   /** 改排序：立刻重排列表，并记住到 settings */
   const setSort = useCallback((value) => {
@@ -101,8 +135,31 @@ export function StoreProvider({ children }) {
       }
     });
     window.yizi.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
+    /* 瀑布流上次状态：列数 + 筛选 + 加载深度 + 滚动位置 */
+    window.yizi.settings.get({ key: 'view' }).then((r) => {
+      const v = r.ok && r.data && typeof r.data === 'object' ? r.data : null;
+      if (v) {
+        if (Number(v.columns) >= 1 && Number(v.columns) <= 30) setColumns(Number(v.columns));
+        setHeartOnly(!!v.heartOnly);
+        setUntagged(!!v.untagged);
+        setRejectedOnly(!!v.rejectedOnly);
+        setAgeMax(v.ageMax ?? null);
+        setNameLike(typeof v.nameLike === 'string' ? v.nameLike : '');
+        scrollTopRef.current = Number(v.scrollTop) || 0;
+        setRestore({
+          itemCount: Math.min(1000, Number(v.itemCount) || 0),
+          scrollTop: Number(v.scrollTop) || 0,
+        });
+      }
+      viewBootedRef.current = true;
+    });
     return window.yizi.on('window:maximized', (v) => setMaximized(Boolean(v)));
   }, []);
+
+  /* 列数 / 筛选 / 已加载数量变化 → 记住 */
+  useEffect(() => {
+    persistView();
+  }, [columns, heartOnly, untagged, rejectedOnly, ageMax, nameLike, items.length, persistView]);
 
   /* 初始库列表 */
   useEffect(() => {
@@ -313,10 +370,12 @@ export function StoreProvider({ children }) {
     },
     setSidebar,
     saveSidebar: (next) => window.yizi.settings.set({ key: 'sidebar', value: next }),
+    restore, rememberScroll,
     loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
-    tagFilter, tagList, selection, occlusion, sidebar, shortcuts, revealed, tagging, status, version, maximized,
+    tagFilter, tagList, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
+    rememberScroll,
     loadMore, actions, say]);
 
   return <StoreContext.Provider value={value}>{children}</StoreContext.Provider>;
