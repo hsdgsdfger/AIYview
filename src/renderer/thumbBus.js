@@ -19,9 +19,15 @@ let sizePref = 'sm';
 
 const counters = { observe: 0, cleanup: 0, batch: 0, req: 0, ok: 0, fail: 0, deliverOk: 0, deliverNull: 0 };
 
+let firstFlushDone = false;
 function scheduleFlush() {
   if (flushTimer) return;
-  flushTimer = setTimeout(flush, 30);
+  // 首次请求延后，先让窗口把骨架画出来（否则首帧被缩略图生成拖住）
+  const delay = firstFlushDone ? 30 : 250;
+  flushTimer = setTimeout(() => {
+    firstFlushDone = true;
+    flush();
+  }, delay);
 }
 
 async function flush() {

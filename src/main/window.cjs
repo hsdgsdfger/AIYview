@@ -21,9 +21,9 @@ function createMainWindow() {
     height: 940,
     minWidth: 1000,
     minHeight: 620,
-    show: false,
+    show: true, // 立即显示：隐藏窗口在部分机器上不会产生首帧，ready-to-show 永不触发（会表现为「双击没反应」）
     frame: false, // 自绘标题栏（品牌 + 添加文件夹 + 布局/面板 + 窗口按钮）
-    backgroundColor: '#0d0f13',
+    backgroundColor: '#0d0f13', // 深色底遮住首帧白闪
     title: 'YiziView',
     webPreferences: {
       preload: path.join(__dirname, 'preload.cjs'),
@@ -35,7 +35,36 @@ function createMainWindow() {
     },
   });
 
-  win.once('ready-to-show', () => win.show());
+  try {
+    require('./logger.cjs').info('window', '窗口已创建并立即显示', {
+      visible: win.isVisible(),
+      bounds: win.getBounds(),
+    });
+  } catch {
+    /* 日志失败不影响显示 */
+  }
+  win.once('ready-to-show', () => {
+    try {
+      require('./logger.cjs').info('window', '首帧就绪（ready-to-show）');
+    } catch {
+      /* 忽略 */
+    }
+  });
+
+  // 兜底：首帧慢（大图库 + 高倍缩放）或渲染层异常时，ready-to-show 可能很晚才来，
+  // 用户会以为「双击没反应」。3 秒后无论如何先把窗口显示出来。
+  const forceShow = setTimeout(() => {
+    if (win.isDestroyed()) return;
+    if (!win.isVisible()) {
+      win.show();
+      try {
+        require('./logger.cjs').warn('window', 'ready-to-show 超时，已强制显示窗口');
+      } catch {
+        /* 忽略 */
+      }
+    }
+  }, 3000);
+  win.once('closed', () => clearTimeout(forceShow));
 
   // 排障：把渲染层控制台（含 CSP/资源加载错误）落盘
   if (process.argv.includes('--shot') || process.env.YIZI_DEBUG) {

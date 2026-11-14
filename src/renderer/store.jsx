@@ -105,7 +105,7 @@ export function StoreProvider({ children }) {
       const res = await window.yizi.browse.page({
         libraryId: s.libraryId,
         cursor: s.cursor,
-        limit: 120,
+        limit: 60,
         sort: s.sort,
         filters: {
           folder: s.folder || null,

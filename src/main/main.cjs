@@ -306,7 +306,7 @@ logger.info('boot', 'main.cjs loaded', { argv: process.argv.slice(1), electron: 
 startWatchdog();
 
 if (!app.requestSingleInstanceLock()) {
-  log('[main] single-instance lock NOT acquired, quitting');
+  logger.warn('app', '单例锁未获取到：已有实例在运行，本次启动请求已转交给它');
   app.quit();
 } else {
   // 自定义协议必须在 app ready 前声明特权，否则 <img src="media://..."> 会被 Chromium 拒绝
@@ -317,11 +317,21 @@ if (!app.requestSingleInstanceLock()) {
     },
   ]);
   app.on('second-instance', () => {
+    // 用户又双击了一次：把已有窗口拉到前台，而不是「什么都没发生」
+    logger.info('app', '收到第二个实例的启动请求，前置已有窗口');
     const [win] = BrowserWindow.getAllWindows();
-    if (win) {
-      if (win.isMinimized()) win.restore();
-      win.focus();
+    if (!win) {
+      logger.warn('app', 'second-instance 但没有任何窗口，可能是首帧未完成');
+      return;
     }
+    if (win.isMinimized()) win.restore();
+    if (!win.isVisible()) win.show();
+    win.focus();
+    win.moveTop();
+    win.flashFrame(true);
+    setTimeout(() => {
+      if (!win.isDestroyed()) win.flashFrame(false);
+    }, 1500);
   });
 
   app.whenReady().then(() => {
