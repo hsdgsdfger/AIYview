@@ -9,7 +9,7 @@ import Icon from './Icon.jsx';
  * 「最近删除、标签、提示词库、日志」都收进右下角设置里。
  */
 export default function BottomBar() {
-  const { selection, actions, occlusion, setOcclusion, tagging, status } = useStore();
+  const { selection, actions, tagging, status } = useStore();
   const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | null
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
@@ -38,38 +38,6 @@ export default function BottomBar() {
       <footer className="statusbar">
         <div className="sb-left">
           <span className="sb-muted">{status || (selection.size > 0 ? '' : '未选择')}</span>
-        </div>
-
-        <div className="sb-center">
-          <button
-            className={occlusion.mode === 'mask' ? 'sb-toggle on' : 'sb-toggle'}
-            onClick={() => setOcclusion({ ...occlusion, mode: 'mask' })}
-            title="遮罩：分级达阈值的图盖遮罩"
-          ><Icon name="mask" size={14} /></button>
-          <button
-            className={occlusion.mode === 'blur' ? 'sb-toggle on' : 'sb-toggle'}
-            onClick={() => setOcclusion({ ...occlusion, mode: 'blur' })}
-            title="模糊"
-          ><Icon name="blur" size={14} /></button>
-          <button
-            className={occlusion.mode === 'hidden' ? 'sb-toggle on' : 'sb-toggle'}
-            onClick={() => setOcclusion({ ...occlusion, mode: 'hidden' })}
-            title="隐藏"
-          ><Icon name="eye" size={14} /></button>
-          <span className="sb-threshold">
-            ≥
-            <select
-              value={occlusion.threshold ?? ''}
-              onChange={(e) => setOcclusion({ ...occlusion, threshold: e.target.value === '' ? null : Number(e.target.value) })}
-              title="遮挡阈值：达到该分级才遮挡"
-            >
-              <option value="">不挡</option>
-              <option value="1">L1</option>
-              <option value="2">L2</option>
-              <option value="3">L3</option>
-              <option value="4">L4</option>
-            </select>
-          </span>
         </div>
 
         <div className="sb-right">

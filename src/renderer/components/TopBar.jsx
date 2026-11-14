@@ -24,7 +24,7 @@ export default function TopBar() {
         <div className="stepper">
           <button className="stepper-btn" onClick={() => setColumns(Math.max(1, columns - 1))} title="减少分栏">−</button>
           <span className="stepper-val">{columns}</span>
-          <button className="stepper-btn" onClick={() => setColumns(Math.min(8, columns + 1))} title="增加分栏">+</button>
+          <button className="stepper-btn" onClick={() => setColumns(Math.min(30, columns + 1))} title="增加分栏">+</button>
         </div>
       </div>
 

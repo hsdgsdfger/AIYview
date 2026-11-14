@@ -1,18 +1,19 @@
-import { useCallback, useEffect, useMemo, useRef } from 'react';
+import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
+import { createPortal } from 'react-dom';
 import { useStore } from '../store.jsx';
 import Thumb from './Thumb.jsx';
 import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
-import { setSizePref, getSizePref, getBusStats } from '../thumbBus.js';
+import { setSizePref } from '../thumbBus.js';
 
 /**
  * 主视图：顶部操作条（选中批处理）+ 瀑布流。
- * 瀑布流用 JS 分列（按预估高度分给最矮列），Ctrl+滚轮缩放列数。
+ * 瀑布流 JS 分列；Ctrl+滚轮 1~30 列；遮挡控制收进符号按钮的二级菜单。
  */
 export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
-    libraryId, libraries, folder, scanning, scanProgress,
+    libraryId, scanning, scanProgress, occlusion, setOcclusion,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
@@ -28,7 +29,7 @@ export default function ImageArea({ onOpenViewer }) {
     const onWheel = (e) => {
       if (!e.ctrlKey) return;
       e.preventDefault();
-      const next = Math.min(8, Math.max(1, columnsRef.current + (e.deltaY > 0 ? 1 : -1)));
+      const next = Math.min(30, Math.max(1, columnsRef.current + (e.deltaY > 0 ? 1 : -1)));
       if (next !== columnsRef.current) {
         columnsRef.current = next;
         setColumnsRef.current(next);
@@ -38,13 +39,13 @@ export default function ImageArea({ onOpenViewer }) {
     return () => el.removeEventListener('wheel', onWheel);
   }, [libraryId]);
 
-  /* 按「每格实际像素」选缩略图档位：高清屏/大格子用 1024，否则 600（与原版一致） */
+  /* 按每格实际像素选缩略图档位：小格用 220 省内存，大格用 1024 */
   useEffect(() => {
     const el = scrollRef.current;
     if (!el) return undefined;
     const pick = () => {
       const cell = (el.clientWidth - 16) / Math.max(1, columns);
-      setSizePref(cell > 780 ? 'md' : 'sm');
+      setSizePref(cell < 150 ? 'xs' : cell > 780 ? 'md' : 'sm');
     };
     pick();
     const ro = new ResizeObserver(pick);
@@ -72,8 +73,6 @@ export default function ImageArea({ onOpenViewer }) {
     lastIdxRef.current = item.id;
   }, [items, actions]);
 
-  const library = libraries.find((l) => l.id === libraryId) || null;
-
   // 排障快照（--shot 时主进程会读取）
   if (typeof window !== 'undefined') {
     window.__yiziDebug = {
@@ -84,9 +83,6 @@ export default function ImageArea({ onOpenViewer }) {
       columns,
       selected: selection.size,
       pick: typeof window.yizi.library.pick,
-      pref: getSizePref(),
-      bus: getBusStats(),
-      cellPx: Math.round(((document.querySelector(".canvas") || {}).clientWidth || 0) / Math.max(1, columns)),
     };
   }
 
@@ -149,8 +145,6 @@ export default function ImageArea({ onOpenViewer }) {
           <span className="ab-muted">未选择</span>
         ) : (
           <>
-            <span className="ab-count">已选 {selectedIds.length} 张</span>
-
             <Hearts
               value={0}
               className="ab-hearts"
@@ -185,7 +179,10 @@ export default function ImageArea({ onOpenViewer }) {
               }}
             ><Icon name="trash" size={13} /> 删除</button>
 
-            <button className="ab-btn" onClick={() => actions.clearSelection()}>取消</button>
+            {/* 原「取消」位置 → 遮挡二级菜单符号 */}
+            <OcclusionMenu occlusion={occlusion} setOcclusion={setOcclusion} />
+
+            <span className="ab-count">已选 {selectedIds.length} 张</span>
           </>
         )}
 
@@ -195,12 +192,11 @@ export default function ImageArea({ onOpenViewer }) {
               {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
             </span>
           )}
-          <span className="ab-sort" title={library ? library.root_path : ''}>
-            {folder ? folder.split('/').pop() : (library ? library.name : '')}
-          </span>
+
           <button className="icon-btn" title="刷新列表" onClick={() => actions.refresh()}>
             <Icon name="refresh" size={14} />
           </button>
+
         </span>
       </div>
 
@@ -228,5 +224,98 @@ export default function ImageArea({ onOpenViewer }) {
         )}
       </div>
     </section>
+  );
+}
+
+/** 遮挡控制二级界面：三态 + 阈值 + 取消选择（取代原「取消」按钮的位置） */
+function OcclusionMenu({ occlusion, setOcclusion }) {
+  const { actions, selection } = useStore();
+  const btnRef = useRef(null);
+  const [pos, setPos] = useState(null);
+
+  const toggle = () => {
+    if (pos) {
+      setPos(null);
+      return;
+    }
+    const r = btnRef.current.getBoundingClientRect();
+    setPos({ top: r.bottom + 6, right: Math.max(8, window.innerWidth - r.right) });
+  };
+
+  useEffect(() => {
+    if (!pos) return undefined;
+    const onDown = (e) => {
+      if (e.target.closest && (e.target.closest('.occl-menu') || e.target.closest('.ab-occl'))) return;
+      setPos(null);
+    };
+    const onKey = (e) => e.key === 'Escape' && setPos(null);
+    window.addEventListener('mousedown', onDown);
+    window.addEventListener('keydown', onKey);
+    return () => {
+      window.removeEventListener('mousedown', onDown);
+      window.removeEventListener('keydown', onKey);
+    };
+  }, [pos]);
+
+  const modeIcon = occlusion.mode === 'mask' ? 'mask' : occlusion.mode === 'blur' ? 'blur' : 'eye';
+
+  return (
+    <>
+      <button
+        ref={btnRef}
+        className={`ab-btn ab-occl ${occlusion.threshold != null ? 'on' : ''}`}
+        title="遮挡：方式 / 阈值 / 取消选择"
+        onClick={toggle}
+      >
+        <Icon name={modeIcon} size={14} />
+        <span className="caret">⌄</span>
+      </button>
+
+      {pos && createPortal(
+        <div className="occl-menu" style={{ top: pos.top, right: pos.right }}>
+          <div className="occl-row">
+            <span className="occl-label">方式</span>
+            {[
+              ['mask', 'mask', '遮罩'],
+              ['blur', 'blur', '模糊'],
+              ['hidden', 'eye', '隐藏'],
+            ].map(([mode, icon, text]) => (
+              <button
+                key={mode}
+                className={`occl-opt ${occlusion.mode === mode ? 'on' : ''}`}
+                onClick={() => setOcclusion({ ...occlusion, mode })}
+              >
+                <Icon name={icon} size={13} /> {text}
+              </button>
+            ))}
+          </div>
+
+          <div className="occl-row">
+            <span className="occl-label">阈值</span>
+            <button
+              className={`occl-opt ${occlusion.threshold == null ? 'on' : ''}`}
+              onClick={() => setOcclusion({ ...occlusion, threshold: null })}
+            >不挡</button>
+            {[1, 2, 3, 4].map((lv) => (
+              <button
+                key={lv}
+                className={`occl-opt ${occlusion.threshold === lv ? 'on' : ''}`}
+                onClick={() => setOcclusion({ ...occlusion, threshold: lv })}
+              >L{lv}</button>
+            ))}
+          </div>
+
+          {selection.size > 0 && (
+            <>
+              <div className="settings-sep" />
+              <button className="occl-item" onClick={() => { actions.clearSelection(); setPos(null); }}>
+                取消选择（{selection.size}）
+              </button>
+            </>
+          )}
+        </div>,
+        document.body
+      )}
+    </>
   );
 }

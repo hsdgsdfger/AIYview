@@ -687,3 +687,52 @@ button { font-family: inherit; }
 .settings-menu button em { margin-left: auto; font-style: normal; font-size: 10.5px; color: var(--muted); }
 .settings-sep { height: 1px; background: var(--line); margin: 4px 6px; }
 .ab-btn.warn { border-color: #d8a13a; color: #e5b25a; }
+
+
+/* 遮挡二级菜单（顶部操作条符号按钮） */
+.ab-occl { gap: 5px; }
+.ab-occl.on { border-color: var(--accent); color: var(--accent); }
+.ab-occl-label { font-size: 11.5px; }
+.ab-occl .caret { color: var(--muted); font-size: 10px; }
+.occl-menu {
+  position: fixed;
+  min-width: 214px;
+  background: var(--panel);
+  border: 1px solid var(--line);
+  border-radius: 9px;
+  padding: 8px;
+  box-shadow: 0 12px 30px rgba(0, 0, 0, 0.42);
+  z-index: 80;
+}
+.occl-row { display: flex; align-items: center; gap: 5px; margin-bottom: 6px; }
+.occl-row:last-of-type { margin-bottom: 0; }
+.occl-label { flex: 0 0 30px; color: var(--muted); font-size: 11px; }
+.occl-opt {
+  display: inline-flex;
+  align-items: center;
+  gap: 3px;
+  height: 23px;
+  padding: 0 8px;
+  border: 1px solid var(--line);
+  border-radius: 6px;
+  background: transparent;
+  color: var(--text);
+  font-size: 11.5px;
+  cursor: pointer;
+}
+.occl-opt:hover { border-color: var(--accent); color: var(--accent); }
+.occl-opt.on { border-color: var(--accent); color: var(--accent); background: var(--accent-soft); }
+.occl-item {
+  display: block;
+  width: 100%;
+  height: 26px;
+  border: none;
+  border-radius: 6px;
+  background: none;
+  color: var(--text);
+  font-size: 12px;
+  text-align: left;
+  padding: 0 6px;
+  cursor: pointer;
+}
+.occl-item:hover { background: var(--accent-soft); color: var(--accent); }

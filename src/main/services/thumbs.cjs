@@ -13,7 +13,7 @@ const { resolveInLibrary } = require('../fs/paths.cjs');
  * 缩略图管线：批量 IPC + 优先级队列 + 磁盘缓存配额。
  * 失败一律返回 null url（渲染层画占位），绝不回退原图（性能根因 5）。
  */
-const SIZES = { sm: 600, md: 1024 }; // 与原版一致（原 thumbnailCache 默认 600）
+const SIZES = { xs: 220, sm: 600, md: 1024 }; // xs: 一行几十张时省内存；sm 与原版一致 // 与原版一致（原 thumbnailCache 默认 600）
 
 let cache = null;
 let scheduler = null;
