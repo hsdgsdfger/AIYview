@@ -113,6 +113,18 @@ function bootstrap() {
     win.webContents.once('did-finish-load', () => {
       setTimeout(async () => {
         try {
+          if (process.env.YIZI_WHEELTEST) {
+            const r = await win.webContents.executeJavaScript(`
+              (() => {
+                const before = JSON.parse(JSON.stringify(window.__yiziDebug));
+                const canvas = document.querySelector('.canvas');
+                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, altKey: true, bubbles: true, cancelable: true }));
+                canvas.dispatchEvent(new WheelEvent('wheel', { deltaY: 120, altKey: true, bubbles: true, cancelable: true }));
+                return new Promise((res) => setTimeout(() => res({ before: before.columns, after: window.__yiziDebug.columns }), 300));
+              })()
+            `);
+            log(`[wheel] columns ${r.before} -> ${r.after}`);
+          }
           const dbg = await win.webContents.executeJavaScript('JSON.stringify(window.__yiziDebug || null)');
           log(`[shot] debug ${dbg}`);
           const image = await win.webContents.capturePage();

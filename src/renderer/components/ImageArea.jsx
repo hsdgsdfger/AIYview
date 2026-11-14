@@ -10,12 +10,33 @@ import { setSizePref } from '../thumbBus.js';
  */
 export default function ImageArea({ onOpenViewer }) {
   const {
-    items, columns, hasMore, loading, loadMore, selection, actions,
+    items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, libraries, folder, sort, setSort, nameLike, setNameLike, scanning, scanProgress,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
   const [asc, setAsc] = useState(false);
+
+  /* Alt + 滚轮 = 缩放瀑布流列数（原生监听才能可靠 preventDefault） */
+  const columnsRef = useRef(columns);
+  columnsRef.current = columns;
+  const setColumnsRef = useRef(setColumns);
+  setColumnsRef.current = setColumns;
+  useEffect(() => {
+    const el = scrollRef.current;
+    if (!el) return undefined;
+    const onWheel = (e) => {
+      if (!e.altKey) return;
+      e.preventDefault();
+      const next = Math.min(8, Math.max(1, columnsRef.current + (e.deltaY > 0 ? 1 : -1)));
+      if (next !== columnsRef.current) {
+        columnsRef.current = next; // 同一帧连续滚轮也不丢步
+        setColumnsRef.current(next);
+      }
+    };
+    el.addEventListener('wheel', onWheel, { passive: false });
+    return () => el.removeEventListener('wheel', onWheel);
+  }, [libraryId]);
 
   const library = libraries.find((l) => l.id === libraryId) || null;
   if (typeof window !== "undefined") window.__yiziDebug = { items: items.length, hasMore, loading, libraryId, columns, pick: typeof window.yizi.library.pick };
