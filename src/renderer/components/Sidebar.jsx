@@ -143,16 +143,15 @@ export default function Sidebar() {
         <>
           <div className="side-scroll">
         <div className="side-group">
-          <button className="side-head as-btn" onClick={() => toggleGroup('folders')} title="折叠/展开文件夹">
-            <span className="side-head-title">
-              <span className="tree-caret">{openGroups.folders ? '▾' : '▸'}</span>文件夹
-            </span>
-            <span
-              className="icon-btn"
-              title="添加文件夹"
-              onClick={(e) => { e.stopPropagation(); actions.addFolder(); }}
-            ><Icon name="folder-plus" size={15} /></span>
-          </button>
+          <div className="side-head">
+            <button className="side-head-toggle" onClick={() => toggleGroup('folders')} title="折叠/展开文件夹">
+              <span className="tree-caret">{openGroups.folders ? '▾' : '▸'}</span>
+              <span>文件夹</span>
+            </button>
+            <button className="icon-btn" title="添加文件夹" onClick={() => actions.addFolder()}>
+              <Icon name="folder-plus" size={15} />
+            </button>
+          </div>
 
           {openGroups.folders && (library ? (
             <>
@@ -235,11 +234,12 @@ export default function Sidebar() {
         </div>
 
         <div className="side-group">
-          <button className="side-head as-btn" onClick={() => toggleGroup('age')} title="折叠/展开分级">
-            <span className="side-head-title">
-              <span className="tree-caret">{openGroups.age ? '▾' : '▸'}</span>分级
-            </span>
-          </button>
+          <div className="side-head">
+            <button className="side-head-toggle" onClick={() => toggleGroup('age')} title="折叠/展开分级">
+              <span className="tree-caret">{openGroups.age ? '▾' : '▸'}</span>
+              <span>分级</span>
+            </button>
+          </div>
           {openGroups.age && (
             <>
               <button
@@ -264,16 +264,17 @@ export default function Sidebar() {
         </div>
 
         <div className="side-group">
-          <button className="side-head as-btn" onClick={() => toggleGroup('tags')} title="折叠/展开标签">
-            <span className="side-head-title">
-              <span className="tree-caret">{openGroups.tags ? '▾' : '▸'}</span>标签
-            </span>
-            <span
+          <div className="side-head">
+            <button className="side-head-toggle" onClick={() => toggleGroup('tags')} title="折叠/展开标签">
+              <span className="tree-caret">{openGroups.tags ? '▾' : '▸'}</span>
+              <span>标签</span>
+            </button>
+            <button
               className="icon-btn"
               title="打标（只处理无元数据的图，可中断续跑）"
-              onClick={(e) => { e.stopPropagation(); actions.startTagging(); }}
-            ><Icon name="tag" size={15} /></span>
-          </button>
+              onClick={() => actions.startTagging()}
+            ><Icon name="tag" size={15} /></button>
+          </div>
 
           {openGroups.tags && (
             <>

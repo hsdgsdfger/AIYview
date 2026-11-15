@@ -1025,3 +1025,19 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .vn-half { opacity: 0; transition: opacity .18s ease, background .15s, color .15s; }
 .viewer-nav:hover .vn-half { opacity: 1; }
 .vn-half:focus-visible { opacity: 1; }
+
+/* 分组标题：左侧是可折叠的标题按钮，右侧是独立的小图标按钮 */
+.side-head-toggle {
+  display: inline-flex;
+  align-items: center;
+  gap: 5px;
+  padding: 0;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+}
+.side-head-toggle:hover { color: var(--text); }
+.side-head .icon-btn { cursor: pointer; }

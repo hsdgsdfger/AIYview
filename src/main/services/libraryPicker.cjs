@@ -1,6 +1,7 @@
 'use strict';
 
 const { handle } = require('../ipc.cjs');
+const logger = require('../logger.cjs');
 const { dialog, BrowserWindow } = require('electron');
 const libs = require('../../core/db/libraryRepository.cjs');
 const { getDb, registerMediaRoot } = require('../db/database.cjs');
@@ -12,14 +13,22 @@ const path = require('node:path');
 function registerLibraryPickerIpc() {
   /** 系统目录选择框：选完即注册（同路径幂等） */
   handle('library:pick', async () => {
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    const result = await dialog.showOpenDialog(win, {
+    const opts = {
       title: '添加文件夹',
       buttonLabel: '添加',
-      properties: ['openDirectory', 'multiSelections'],
-      defaultPath: undefined,
+      // 注意：Windows 上 'openDirectory' 与 'multiSelections' 组合会让系统对话框
+      // 直接返回「取消」且不显形（用户表现就是「点添加文件夹没反应」），不要加回去。
+      properties: ['openDirectory'],
+    };
+    const t0 = Date.now();
+    const result = await dialog.showOpenDialog(opts);
+    logger.info('ipc', 'library:pick 结束', {
+      canceled: Boolean(result.canceled),
+      paths: Array.isArray(result.filePaths) ? result.filePaths.length : 0,
+      cost: Date.now() - t0,
     });
     if (result.canceled || result.filePaths.length === 0) return { canceled: true, libraries: [] };
+
 
     const db = getDb();
     const libraries = [];

@@ -18,9 +18,9 @@ function registerTagIpc() {
 
   /** 带文件对话框的导入：界面上「导入标签 CSV」走这条，不需要调用方自己拼路径 */
   handle('tag:pick-csv', async ({ source } = {}) => {
-    const { dialog, BrowserWindow } = require('electron');
-    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
-    const result = await dialog.showOpenDialog(win, {
+    const { dialog } = require('electron');
+    // 同样不挂父窗口：窗口不在系统前台时挂父窗口的对话框会被立刻取消且不显形
+    const result = await dialog.showOpenDialog({
       title: '导入标签 CSV',
       buttonLabel: '导入',
       filters: [{ name: '标签 CSV', extensions: ['csv'] }],
