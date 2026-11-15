@@ -314,6 +314,18 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('will-quit', () => {
+    // 退出前把 WAL 收进主库，避免下次启动前的强杀丢掉刚刚点的标记
+    try {
+      const db = getDb();
+      db.pragma('wal_checkpoint(TRUNCATE)');
+      // 顺手留一份库备份（标记都在里面，几 MB 而已）
+      require('node:fs').copyFileSync(
+        path.join(app.getPath('userData'), 'index.sqlite'),
+        path.join(app.getPath('userData'), 'index.sqlite.bak')
+      );
+    } catch (error) {
+      logger.warn('db', '退出前检查点失败', { message: error.message });
+    }
     closeDb();
   });
 }

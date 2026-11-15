@@ -48,7 +48,8 @@ function openDatabase(options) {
   db.pragma('journal_mode = WAL');
   db.pragma('foreign_keys = ON');
   db.pragma('busy_timeout = 5000');
-  db.pragma('synchronous = NORMAL');
+  // NORMAL 在 WAL 下只在检查点刷盘，进程被强杀会丢最后一批标记；这里改成 FULL，逐次提交即落盘
+  db.pragma('synchronous = FULL');
 
   const migration = migrate(db, loadMigrations(options.migrationsDir || MIGRATIONS_DIR), {
     now: options.now,

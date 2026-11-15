@@ -302,7 +302,16 @@ export default function ImageArea({ onOpenViewer }) {
         </span>
       </div>
 
-      <div className="canvas" ref={scrollRef} onScroll={onScroll}>
+      <div
+        className="canvas"
+        ref={scrollRef}
+        onScroll={onScroll}
+        onMouseEnter={() => {
+          // 鼠标一进图区就把搜索框的焦点收走，否则 1~5 / x / Alt+数字 这些快捷键会被输入框吞掉
+          const active = document.activeElement;
+          if (active && active.classList && active.classList.contains('ab-search-input')) active.blur();
+        }}
+      >
         <div className="cols">
           {buckets.map((bucket, i) => (
             <div className="col" key={i}>
