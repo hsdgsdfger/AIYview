@@ -313,6 +313,21 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .cols { display: flex; gap: 8px; align-items: flex-start; }
 .col { flex: 1 1 0; min-width: 0; display: flex; flex-direction: column; gap: 8px; }
 
+/* 时间线日期条：按时间排序时每列跨天出现一次，只做视觉分段、不动排序 */
+.day-sep {
+  display: flex;
+  align-items: baseline;
+  justify-content: space-between;
+  gap: 8px;
+  margin: 2px 0 -2px;
+  padding: 4px 2px 5px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.10);
+  font-size: 11px;
+  letter-spacing: 0.02em;
+  color: var(--fg-dim, #9aa0a6);
+}
+.day-sep .day-count { font-size: 10px; opacity: 0.7; }
+
 /* ---------------------------------------------------------------
    缩略图
    --------------------------------------------------------------- */
@@ -627,10 +642,10 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 /* 1:1 原始像素 / 按住空格看原图：不压到窗口，保持真实尺寸 */
 .viewer-stage.actual { cursor: grab; }
 .viewer-stage img.actual { max-width: none; max-height: none; }
-/* 提示词栏开关：正常流式的小方按钮（不再被右侧翻页条盖住） */
+/* 提示词栏开关：只占 30×30 的小方块，不是整条贴边的竖条 */
 .viewer-tools {
-  flex: 0 0 36px;
-  align-self: stretch;
+  flex: 0 0 30px;
+  align-self: flex-start;
   display: flex;
   justify-content: center;
   padding-top: 10px;

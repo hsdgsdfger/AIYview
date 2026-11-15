@@ -15,7 +15,7 @@ const CHANNELS = Object.freeze([
   'browse:folders', 'browse:page', 'browse:count',
   'image:get', 'image:marks', 'image:age', 'image:dimensions', 'image:prompt',
   'image:rename-preview', 'image:rename-apply',
-  'image:find-similar', 'image:hash-build', 'image:hash-stats', 'image:export-sidecar',
+  'image:find-similar', 'image:hash-build', 'image:hash-stats', 'image:export-sidecar', 'image:import-sidecar',
   'collection:list', 'collection:create', 'collection:rename', 'collection:remove',
   'collection:add', 'collection:remove-items',
   'thumb:get', 'thumb:cache-stats', 'thumb:cache-clear',
@@ -25,6 +25,7 @@ const CHANNELS = Object.freeze([
   'delete:trash', 'delete:list', 'delete:restore', 'delete:sweep',
   'settings:get', 'settings:set', 'settings:all',
   'app:log-path', 'app:log-open', 'log:renderer',
+  'app:backup', 'app:backup-open',
 ]);
 
 const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress', 'window:maximized', 'hash:progress', 'collections-updated']);

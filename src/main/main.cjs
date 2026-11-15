@@ -27,6 +27,7 @@ const { registerRenameIpc } = require('./services/rename.cjs');
 const { registerSimilarIpc, buildHashes } = require('./services/similar.cjs');
 const { registerCollectionIpc } = require('./services/collections.cjs');
 const { registerSidecarIpc } = require('./services/sidecar.cjs');
+const { registerBackupIpc } = require('./services/backup.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
@@ -179,6 +180,7 @@ function registerIpc() {
   registerSimilarIpc(broadcast);
   registerCollectionIpc(broadcast);
   registerSidecarIpc(broadcast);
+  registerBackupIpc(broadcast);
 }
 
 function bootstrap() {

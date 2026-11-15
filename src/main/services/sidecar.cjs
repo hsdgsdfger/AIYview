@@ -81,6 +81,61 @@ function registerSidecarIpc(broadcast) {
     if (typeof broadcast === 'function') broadcast('sidecar:progress', { libraryId, written, failed });
     return { written, failed, skipped: Math.max(0, skipped) };
   });
+
+  /**
+   * 从侧车恢复标记：读每张图旁边的 .aiyview.json，只覆盖里面写了的字段
+   * （心数 / 废标 / 分级），没侧车的图跳过；标签暂不恢复。
+   */
+  handle('image:import-sidecar', ({ libraryId, ids } = {}) => {
+    const db = getDb();
+    const lib = libs.getLibrary(db, libraryId);
+    if (!lib) throw Object.assign(new Error('图库不存在'), { code: 'NOT_FOUND' });
+    const root = lib.root_path.replace(/\//g, path.sep);
+    const { images } = rowsForLibrary(db, libraryId);
+    const only = Array.isArray(ids) && ids.length ? new Set(ids) : null;
+    const imgs = require('../../core/db/imageRepository.cjs');
+
+    let restored = 0;
+    let partial = 0;
+    let missing = 0;
+    let bad = 0;
+    for (const row of images) {
+      if (only && !only.has(row.id)) continue;
+      let payload = null;
+      try {
+        const abs = resolveInLibrary(root, row.rel_path);
+        payload = JSON.parse(fs.readFileSync(sidecarFor(abs), 'utf8'));
+      } catch {
+        missing += 1;
+        continue;
+      }
+      if (!payload || payload.app !== 'AIYview') {
+        bad += 1;
+        continue;
+      }
+      const hasHeart = Number.isFinite(Number(payload.heart));
+      const hasReject = Number.isFinite(Number(payload.rejected));
+      const hasAge = payload.ageLevel !== undefined;
+      if (!hasHeart && !hasReject && !hasAge) {
+        bad += 1;
+        continue;
+      }
+      if (hasHeart || hasReject) {
+        imgs.setMarks(db, [row.id], {
+          heart: hasHeart ? Math.min(5, Math.max(0, Number(payload.heart))) : undefined,
+          rejected: hasReject ? (Number(payload.rejected) ? 1 : 0) : undefined,
+        });
+      }
+      if (hasAge) {
+        const level = payload.ageLevel === null ? null : Math.min(4, Math.max(0, Number(payload.ageLevel)));
+        imgs.setAge(db, [row.id], { level, source: payload.ageSource || 'sidecar' });
+      }
+      restored += 1;
+      if (!hasHeart || !hasReject || !hasAge) partial += 1;
+    }
+    if (typeof broadcast === 'function') broadcast('browse:changed', { libraryId, reason: 'import' });
+    return { restored, partial, missing, bad };
+  });
 }
 
 module.exports = { registerSidecarIpc, sidecarFor };

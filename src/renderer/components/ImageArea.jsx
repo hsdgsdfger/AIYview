@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
-import Thumb from './Thumb.jsx';
+import GridColumns from './GridColumns.jsx';
+import { buildBuckets } from '../layoutBuckets.js';
 import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
 import OcclusionMenu from './OcclusionMenu.jsx';
@@ -19,7 +20,7 @@ export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
-    restore, rememberScroll, total, nameLike, setNameLike, hoverEdit,
+    restore, rememberScroll, total, nameLike, setNameLike, hoverEdit, sort,
     collections, say,
   } = useStore();
   const scrollRef = useRef(null);
@@ -165,17 +166,8 @@ export default function ImageArea({ onOpenViewer }) {
     };
   }
 
-  /* 真瀑布流：按预估高度把图分给当前最矮的一列 */
-  const buckets = useMemo(() => {
-    const cols = Array.from({ length: columns }, () => ({ items: [], h: 0 }));
-    for (const item of items) {
-      const aspect = item.width && item.height ? item.width / item.height : 0.72;
-      const target = cols.reduce((min, cur) => (cur.h < min.h ? cur : min), cols[0]);
-      target.items.push(item);
-      target.h += 1 / Math.min(Math.max(aspect, 0.45), 2.4);
-    }
-    return cols;
-  }, [items, columns]);
+  /* 真瀑布流：分列 + 按时间排序时插日期条（算法在 layoutBuckets.js） */
+  const buckets = useMemo(() => buildBuckets(items, columns, sort), [items, columns, sort]);
 
   const selectedIds = useMemo(() => [...selection], [selection]);
   /** 悬停即编辑：没选中任何图时，操作条/快捷键作用在鼠标停留的那张上 */
@@ -327,29 +319,17 @@ export default function ImageArea({ onOpenViewer }) {
           if (active && active.classList && active.classList.contains('ab-search-input')) active.blur();
         }}
       >
-        <div className="cols">
-          {buckets.map((bucket, i) => (
-            <div className="col" key={i}>
-              {bucket.items.map((item) => (
-                <Thumb
-                  key={item.id}
-                  item={item}
-                  selected={selection.has(item.id)}
-                  hovered={hoverEdit && hoverId === item.id}
-                  groupHue={groupOf(item).hue}
-                  groupCount={groupOf(item).count}
-                  onHover={setHoverId}
-                  onClick={clickItem}
-                  onDouble={() => onOpenViewer(item)}
-                  onContext={(it, e) => {
-                    e.preventDefault();
-                    setMenu({ x: e.clientX, y: e.clientY, item: it });
-                  }}
-                />
-              ))}
-            </div>
-          ))}
-        </div>
+        <GridColumns
+          buckets={buckets}
+          selection={selection}
+          hoverEdit={hoverEdit}
+          hoverId={hoverId}
+          groupOf={groupOf}
+          setHoverId={setHoverId}
+          clickItem={clickItem}
+          onOpenViewer={onOpenViewer}
+          onContextMenu={(it, e) => setMenu({ x: e.clientX, y: e.clientY, item: it })}
+        />
 
         {loading && <div className="feed-hint">加载中…</div>}
         {!hasMore && items.length > 0 && (
