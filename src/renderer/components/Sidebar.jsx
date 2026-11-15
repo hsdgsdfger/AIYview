@@ -1,6 +1,8 @@
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import Icon from './Icon.jsx';
+import TreeNode from './FolderTree.jsx';
+import CollectionGroup from './CollectionGroup.jsx';
 
 /** 左栏：搜索文件夹 / 文件夹树 / 收藏图片 / 标签区；宽度可拖拽，可收成图标条 */
 export default function Sidebar() {
@@ -10,11 +12,12 @@ export default function Sidebar() {
     tagFilter, setTagFilter, tagList, actions, say,
     ageOnly, setAgeOnly, setAgeMax,
     sidebar, setSidebar, saveSidebar,
+    collections, collectionId, setCollectionId, refreshCollections,
   } = useStore();
   const [tagQuery, setTagQuery] = useState('');
   const [tagHits, setTagHits] = useState(null); // 全库搜索结果（null 表示没在搜）
   /** 三个分组的折叠状态（默认全展开），写进 settings.sideGroups */
-  const [openGroups, setOpenGroups] = useState({ folders: true, age: true, tags: true });
+  const [openGroups, setOpenGroups] = useState({ folders: true, age: true, tags: true, collections: true });
   const dragRef = useRef(null);
 
   useEffect(() => {
@@ -89,6 +92,7 @@ export default function Sidebar() {
     setTagFilter(null);
     setAgeOnly(null);
     setAgeMax(null);
+    setCollectionId(null);
   };
 
   /** 移除图库：图片文件不动，只从软件里摘掉索引 */
@@ -235,6 +239,17 @@ export default function Sidebar() {
           )}
         </div>
 
+        <CollectionGroup
+          open={openGroups.collections}
+          onToggle={() => toggleGroup('collections')}
+          collections={collections}
+          collectionId={collectionId}
+          setCollectionId={setCollectionId}
+          libraryId={libraryId}
+          refreshCollections={refreshCollections}
+          say={say}
+        />
+
         <div className="side-group">
           <div className="side-head">
             <button className="side-head-toggle" onClick={() => toggleGroup('age')} title="折叠/展开分级">
@@ -330,37 +345,6 @@ export default function Sidebar() {
       )}
       {!collapsed && <div className="sb-resizer" onMouseDown={onResizeDown} title="拖动调宽" />}
     </aside>
-  );
-}
-
-function TreeNode({ node, active, onPick, depth = 0 }) {
-  const [open, setOpen] = useState(depth < 1);
-  const children = node.children || [];
-  return (
-    <>
-      <button
-        className={`side-item ${active === node.dir ? 'active' : ''}`}
-        style={{ paddingLeft: 14 + depth * 13 }}
-        onClick={() => onPick(node.dir)}
-        title={node.dir}
-      >
-        <span
-          className="tree-caret"
-          onClick={(e) => {
-            e.stopPropagation();
-            if (children.length) setOpen((o) => !o);
-          }}
-        >
-          {children.length ? (open ? '▾' : '▸') : ''}
-        </span>
-        <Icon name="folder" size={14} className="side-ico" />
-        <span className="side-text">{node.name}</span>
-        <span className="side-count">{node.count}</span>
-      </button>
-      {open && children.map((c) => (
-        <TreeNode key={c.dir} node={c} active={active} onPick={onPick} depth={depth + 1} />
-      ))}
-    </>
   );
 }
 

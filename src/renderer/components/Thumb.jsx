@@ -11,7 +11,7 @@ import Hearts from './Hearts.jsx';
  *     · 再点一下恢复遮挡（遮挡层保持挂载，只是变透明）
  *     · 全局遮挡设置（方式/阈值）一变，所有临时显示全部复位
  */
-export default function Thumb({ item, selected, hovered, onHover, onClick, onContext, onDouble }) {
+export default function Thumb({ item, selected, hovered, onHover, onClick, onContext, onDouble, groupHue, groupCount }) {
   const elRef = useRef(null);
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
@@ -84,7 +84,8 @@ export default function Thumb({ item, selected, hovered, onHover, onClick, onCon
     <div
       ref={elRef}
       data-thumb-id={item.id}
-      className={`thumb ${selected ? 'selected' : ''} ${hovered ? 'hovered' : ''} ${masked ? 'occluded' : ''}`}
+      className={`thumb ${selected ? 'selected' : ''} ${hovered ? 'hovered' : ''} ${masked ? 'occluded' : ''} ${groupCount > 1 ? 'grouped' : ''}`}
+      style={groupCount > 1 ? { '--g': groupHue } : undefined}
       onClick={(e) => onClick(item, e)}
       onMouseEnter={() => onHover?.(item.id)}
       onMouseLeave={() => onHover?.((cur) => (cur === item.id ? null : cur))}
@@ -143,6 +144,7 @@ export default function Thumb({ item, selected, hovered, onHover, onClick, onCon
           <span className="badge heart"><Hearts value={item.heart} size={9} readOnly /></span>
         )}
         {item.ageLevel != null && <span className={`badge age age-${item.ageLevel}`}>L{item.ageLevel}</span>}
+        {groupCount > 1 && <span className="badge group">同组 {groupCount}</span>}
         {selected && <span className="badge sel">✓</span>}
       </div>
     </div>

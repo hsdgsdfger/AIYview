@@ -24,6 +24,9 @@ const { registerTrashIpc } = require('./services/trash.cjs');
 const { registerSettingsIpc } = require('./services/settings.cjs');
 const { registerTaggerIpc } = require('./services/tagger.cjs');
 const { registerRenameIpc } = require('./services/rename.cjs');
+const { registerSimilarIpc, buildHashes } = require('./services/similar.cjs');
+const { registerCollectionIpc } = require('./services/collections.cjs');
+const { registerSidecarIpc } = require('./services/sidecar.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
@@ -173,6 +176,9 @@ function registerIpc() {
   registerSettingsIpc();
   registerTaggerIpc(broadcast);
   registerRenameIpc(broadcast);
+  registerSimilarIpc(broadcast);
+  registerCollectionIpc(broadcast);
+  registerSidecarIpc(broadcast);
 }
 
 function bootstrap() {
@@ -207,6 +213,16 @@ function bootstrap() {
   app.on('child-process-gone', (_e, details) => logger.error('app', '子进程退出', details));
 
   installDevHooks(win, log);
+
+  // 启动后在后台慢慢补相似图指纹（不占前台、跑完自动停）
+  setTimeout(() => {
+    try {
+      const rows = getDb().prepare('SELECT id FROM libraries ORDER BY id').all();
+      for (const row of rows) buildHashes({ libraryId: row.id, broadcast }).catch(() => {});
+    } catch (error) {
+      log('[hash] 启动补指纹失败: ' + (error && error.message));
+    }
+  }, 6000);
 
 
   if (SMOKE) {

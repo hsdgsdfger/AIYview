@@ -172,13 +172,7 @@ export default function Viewer({ item, onClose, onNav }) {
         <span className="vn-arrow">›</span>
       </button>
 
-      {/* 提示词栏开关：Tab 或这个按钮，收起时整块让给画面 */}
-      <button
-        className="viewer-side-toggle"
-        style={{ right: sideOpen ? `${promptWidth + 8}px` : '10px' }}
-        title={sideOpen ? '收起提示词栏（Tab）' : '展开提示词栏（Tab）'}
-        onClick={() => setSideOpen((v) => !v)}
-      >{sideOpen ? '»' : '«'}</button>
+      {/* 提示词栏开关：整条贴边竖条（整条都能点），Tab 同效 */}
 
       {sideOpen && (
         <div className="viewer-side" style={{ width: promptWidth, flex: `0 0 ${promptWidth}px` }}>
@@ -222,6 +216,14 @@ export default function Viewer({ item, onClose, onNav }) {
           {info && <div className="viewer-meta muted">{info.ext} · {(info.size_bytes / 1024).toFixed(0)}KB · {info.width || '?'}×{info.height || '?'}</div>}
         </div>
       )}
+
+      <div className="viewer-tools">
+        <button
+          className="viewer-side-toggle"
+          title={sideOpen ? '收起提示词栏（Tab）' : '展开提示词栏（Tab）'}
+          onClick={() => setSideOpen((v) => !v)}
+        >{sideOpen ? '›' : '‹'}</button>
+      </div>
     </div>
   );
 }

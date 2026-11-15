@@ -41,15 +41,17 @@ function indexes(db) {
 
 test('迁移目录按序就位（001 基础表 + 002 目录缓存 + 003 排序键）', () => {
   const files = fs.readdirSync(migrationsDir).filter((n) => n.endsWith('.sql')).sort();
-  assert.deepEqual(files, ['001_init.sql', '002_folders.sql', '003_sort_key.sql']);
+  assert.deepEqual(files, ['001_init.sql', '002_folders.sql', '003_sort_key.sql', '004_similar_collections.sql']);
 });
 
 test('迁移能一次建成全部表', () => {
   const { db, result } = buildDb();
-  assert.equal(result.applied.length, 3);
-  assert.equal(result.applied[2].version, 3);
+  assert.equal(result.applied.length, 4);
+  assert.equal(result.applied[3].version, 4);
 
   assert.deepEqual(tables(db), [
+    'collection_items',
+    'collections',
     'deletions',
     'folders',
     'image_prompts',
@@ -79,6 +81,7 @@ test('索引齐全：列表页、心数、分级、标签、删除扫描', () =>
     'idx_prompt_library_time',
     'idx_deletions_sweep',
     'idx_deletions_path',
+    'idx_images_phash',
   ]) {
     assert.ok(names.includes(name), `缺少索引 ${name}`);
   }
@@ -87,7 +90,7 @@ test('索引齐全：列表页、心数、分级、标签、删除扫描', () =>
 
 test('user_version 与迁移数对齐', () => {
   const { db } = buildDb();
-  assert.equal(db.pragma('user_version', { simple: true }), 3);
+  assert.equal(db.pragma('user_version', { simple: true }), 4);
   db.close();
 });
 
@@ -277,9 +280,9 @@ test('重复打开同一库文件不会重复执行迁移', () => {
   const r2 = migrator.migrate(second, entries);
   second.close();
 
-  assert.equal(r1.applied.length, 3);
+  assert.equal(r1.applied.length, 4);
   assert.equal(r2.applied.length, 0);
-  assert.equal(r2.current, 3);
+  assert.equal(r2.current, 4);
 
   fs.rmSync(tmp, { force: true });
   fs.rmSync(`${tmp}-wal`, { force: true });

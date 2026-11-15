@@ -168,6 +168,10 @@ function buildFilters(filters = {}) {
     where.push('id IN (SELECT image_id FROM image_tags WHERE tag_id = @tagId)');
     params.tagId = filters.tagId;
   }
+  if (filters.collectionId !== undefined && filters.collectionId !== null) {
+    where.push('id IN (SELECT image_id FROM collection_items WHERE collection_id = @collectionId)');
+    params.collectionId = filters.collectionId;
+  }
   if (filters.nameLike) {
     const raw = String(filters.nameLike).trim();
     // `tag:` 前缀 = 只在标签里找；否则文件名 / 标签 / 提示词一起找
@@ -227,7 +231,7 @@ function listPage(db, q) {
 
   const items = db
     .prepare(`SELECT id, rel_path, file_name, ext, size_bytes, mtime_ms, width, height,
-                     heart, rejected, age_level AS ageLevel, age_source AS ageSource, sort_key
+                     heart, rejected, age_level AS ageLevel, age_source AS ageSource, sort_key, phash
               FROM images ${where} ${cursorSql} ${orderSql} LIMIT @limit`)
     .all({ ...params, limit: limit + 1 });
 
@@ -327,7 +331,6 @@ function setDimensions(db, id, width, height) {
     .prepare('UPDATE images SET width = ?, height = ?, updated_at = unixepoch() * 1000 WHERE id = ?')
     .run(width, height, id).changes;
 }
-
 /**
  * 对账：库里存在但磁盘上已消失的行按库删除（默认关，扫描时可选）。
  */

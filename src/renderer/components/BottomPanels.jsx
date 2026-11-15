@@ -213,7 +213,7 @@ export function CachePanel({ onClose }) {
 
 /** 界面布局：左栏宽度、查看器提示词栏宽度，都用滑块调，松手写盘 */
 export function LayoutPanel({ onClose }) {
-  const { sidebar, setSidebar, saveSidebar, promptWidth, setPromptWidth } = useStore();
+  const { sidebar, setSidebar, saveSidebar, promptWidth, setPromptWidth, libraryId, say } = useStore();
   const [sideW, setSideW] = useState(sidebar.width);
   const [promptW, setPromptWLocal] = useState(promptWidth);
 
@@ -269,6 +269,14 @@ export function LayoutPanel({ onClose }) {
             livePrompt(310);
           }}
         >恢复默认</button>
+        <button
+          className="btn"
+          title="把心数/废标/分级/标签写成每张图旁边的 .aiyview.json（不动原图）"
+          onClick={async () => {
+            const r = await window.aiyview.image['export-sidecar']({ libraryId });
+            say(r && r.ok ? `侧车已写出 ${r.data.written} 份${r.data.failed ? `，失败 ${r.data.failed}` : ''}` : (r && r.error) || '导出失败');
+          }}
+        >导出全库标记（侧车）</button>
       </div>
     </PanelShell>
   );

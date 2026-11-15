@@ -2,6 +2,7 @@ import { createContext, useContext, useCallback, useEffect, useMemo, useRef, use
 import { DEFAULT_SHORTCUTS } from './shortcuts.js';
 import { loadPrefs, viewPayload } from './prefs.js';
 import { useActions } from './useActions.js';
+import { filtersOf } from './filters.js';
 
 /**
  * 全局状态：库 / 目录 / 分页 / 选中 / 视图 / 筛选 / 标签栏。
@@ -30,6 +31,8 @@ export function StoreProvider({ children }) {
   const [ageOnly, setAgeOnly] = useState(null);       // 精确分级（L0–L4）
   const [nameLike, setNameLike] = useState('');
   const [tagFilter, setTagFilter] = useState(null);   // {id,name}
+  const [collectionId, setCollectionId] = useState(null); // 虚拟收藏夹筛选
+  const [collections, setCollections] = useState([]);
   const [tagList, setTagList] = useState([]);
   const [selection, setSelection] = useState(new Set());
   const [occlusion, setOcclusion] = useState({ mode: 'mask', threshold: 2, strength: 100 });
@@ -54,21 +57,9 @@ export function StoreProvider({ children }) {
   const stateRef = useRef({});
   stateRef.current = {
     libraryId, folder, cursor, loading, hasMore, sort,
-    heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter,
+    heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId,
     columns, items,
   };
-
-  /** 筛选条件（列表与计数共用，避免两处口径漂移） */
-  const filtersOf = useCallback((s) => ({
-    folder: s.folder || null,
-    heartMin: s.heartOnly ? 1 : null,
-    untaggedOnly: s.untagged,
-    rejectedOnly: s.rejectedOnly,
-    ageMax: s.ageMax,
-    ageOnly: s.ageOnly,
-    nameLike: s.nameLike || '',
-    tagId: s.tagFilter ? s.tagFilter.id : null,
-  }), []);
 
   const say = useCallback((text) => {
     setStatus(text);
@@ -193,6 +184,14 @@ export function StoreProvider({ children }) {
     if (res.ok) setTagList(res.data);
   }, []);
 
+  /** 虚拟收藏夹列表（切库/增删后刷新） */
+  const refreshCollections = useCallback(async () => {
+    const s = stateRef.current;
+    if (s.libraryId == null) return;
+    const res = await window.aiyview.collection.list({ libraryId: s.libraryId });
+    if (res && res.ok) setCollections(res.data || []);
+  }, []);
+
   /** 真实总数：browse:count，与列表同一套筛选口径 */
   const refreshCount = useCallback(async () => {
     const s = stateRef.current;
@@ -240,10 +239,12 @@ export function StoreProvider({ children }) {
       if (res.ok) setFolders(res.data);
     });
     refreshTags();
+    refreshCollections();
     setFolder('');
     setTagFilter(null);
     setUntagged(false);
-  }, [libraryId, version, refreshTags]);
+    setCollectionId(null);
+  }, [libraryId, version, refreshTags, refreshCollections]);
 
   /* 任一筛选变化 → 重置分页 */
   useEffect(() => {
@@ -252,7 +253,7 @@ export function StoreProvider({ children }) {
     setCursor(null);
     setHasMore(true);
     setSelection(new Set());
-  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, version]);
+  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version]);
 
   const loadMore = useCallback(async () => {
     const s = stateRef.current;
@@ -290,7 +291,7 @@ export function StoreProvider({ children }) {
   /* 筛选变化 → 重新计数 */
   useEffect(() => {
     refreshCount();
-  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, version, refreshCount]);
+  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version, refreshCount]);
 
   /* 打标状态：重开窗口时若后台还在跑，进度条要接回来（tag:status 原先没人调） */
   useEffect(() => {
@@ -324,14 +325,18 @@ export function StoreProvider({ children }) {
       if (p && p.finished) return;
       setTagging(p);
     });
+    const offCollections = window.aiyview.on('collections-updated', () => {
+      refreshCollections();
+    });
     return () => {
       clearTimeout(autoTimerRef.current);
       offProgress();
       offChanged();
       offTags();
       offTag();
+      offCollections();
     };
-  }, [refreshCount, refreshTags, markRefresh, refreshList]);
+  }, [refreshCount, refreshTags, refreshCollections, markRefresh, refreshList]);
 
   const actions = useActions({
     libraryId, run, say, itemsRef: stateRef,
@@ -353,7 +358,7 @@ export function StoreProvider({ children }) {
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
-    tagFilter, tagList, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
+    tagFilter, tagList, collectionId, collections, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
     total, pendingNew, hoverEdit, setHoverEdit,
     promptWidth,
     setPromptWidth: (w) => {
@@ -363,6 +368,7 @@ export function StoreProvider({ children }) {
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
+    setCollectionId, refreshCollections,
     refreshTags, refreshCount,
     setOcclusionWithReset: (next) => {
       setRevealed(new Set());
@@ -375,8 +381,8 @@ export function StoreProvider({ children }) {
     loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
-    tagFilter, tagList, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
-    total, pendingNew, refreshTags, refreshCount,
+    tagFilter, tagList, collectionId, collections, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
+    total, pendingNew, refreshTags, refreshCount, refreshCollections,
     hoverEdit, setHoverEdit,
     promptWidth,
     rememberScroll,

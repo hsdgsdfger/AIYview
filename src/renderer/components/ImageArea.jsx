@@ -4,7 +4,10 @@ import Thumb from './Thumb.jsx';
 import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
 import OcclusionMenu from './OcclusionMenu.jsx';
+import { CtxMenu, SimilarPanel } from './ImageMenus.jsx';
 import { setSizePref } from '../thumbBus.js';
+import { makeGroupLookup } from '../gridGroups.js';
+import SearchBox from './SearchBox.jsx';
 import { useScrollAnchor } from '../useScrollAnchor.js';
 import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
 
@@ -17,25 +20,41 @@ export default function ImageArea({ onOpenViewer }) {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
     restore, rememberScroll, total, nameLike, setNameLike, hoverEdit,
+    collections, say,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
   const [heartVal, setHeartVal] = useState(0); // 本次选中后点击的心数（红心显示用）
-  const [nameInput, setNameInput] = useState(nameLike || '');
   const [menu, setMenu] = useState(null);      // 右键菜单 { x, y, item }
   const [hoverId, setHoverId] = useState(null); // 悬停即编辑：当前鼠标下的那张
-  const nameTimerRef = useRef(null);
+  const [similar, setSimilar] = useState(null); // 相似图面板 { source, items, threshold }
+  const [similarBusy, setSimilarBusy] = useState(false);
+  const [hashProg, setHashProg] = useState(null); // 指纹计算进度 { done, total }
 
-  /* 文件名搜索：输入防抖 300ms 再落到筛选状态（每敲一个字都查库太浪费） */
+  /* 相似指纹进度：算完自动消失 */
   useEffect(() => {
-    setNameInput(nameLike || '');
-  }, [nameLike]);
+    if (!window.aiyview || !window.aiyview.on) return undefined;
+    return window.aiyview.on('hash:progress', (p) => {
+      setHashProg(p && p.finished ? null : p || null);
+    });
+  }, []);
 
-  const onNameChange = (value) => {
-    setNameInput(value);
-    clearTimeout(nameTimerRef.current);
-    nameTimerRef.current = setTimeout(() => setNameLike(value.trim()), 300);
+  const findSimilar = async (item) => {
+    setSimilarBusy(true);
+    setMenu(null);
+    try {
+      const res = await window.aiyview.image['find-similar']({ id: item.id, libraryId, threshold: 8, limit: 60 });
+      if (!res || !res.ok) {
+        setSimilar({ source: item, items: [], error: (res && res.error) || '查询失败', threshold: 8 });
+        return;
+      }
+      setSimilar({ source: item, items: res.data.items || [], threshold: res.data.threshold || 8 });
+    } finally {
+      setSimilarBusy(false);
+    }
   };
+  /* 同批图分组（同目录同一分钟算一组），卡片上着色并标「同组 N」 */
+  const groupOf = useMemo(() => makeGroupLookup(items), [items]);
 
   /* 右键菜单：点空白/滚动就关掉 */
   useEffect(() => {
@@ -295,19 +314,7 @@ export default function ImageArea({ onOpenViewer }) {
           )}
         </span>
 
-        <span className="ab-search">
-          <Icon name="search" size={13} className="ab-search-ico" />
-          <input
-            className="ab-search-input"
-            placeholder="搜文件名 / 标签 / 提示词…"
-            value={nameInput}
-            onChange={(e) => onNameChange(e.target.value)}
-            title="文件名、标签、提示词一起匹配（不区分大小写）；前缀 tag: 只搜标签；清空即恢复"
-          />
-          {nameInput && (
-            <button className="ab-search-clear" title="清空搜索" onClick={() => onNameChange('')}>×</button>
-          )}
-        </span>
+        <SearchBox nameLike={nameLike} setNameLike={setNameLike} />
       </div>
 
       <div
@@ -329,6 +336,8 @@ export default function ImageArea({ onOpenViewer }) {
                   item={item}
                   selected={selection.has(item.id)}
                   hovered={hoverEdit && hoverId === item.id}
+                  groupHue={groupOf(item).hue}
+                  groupCount={groupOf(item).count}
                   onHover={setHoverId}
                   onClick={clickItem}
                   onDouble={() => onOpenViewer(item)}
@@ -355,32 +364,30 @@ export default function ImageArea({ onOpenViewer }) {
       </div>
 
       {menu && (
-        <div
-          className="ctx-menu"
-          style={{ left: Math.min(menu.x, window.innerWidth - 190), top: Math.min(menu.y, window.innerHeight - 300) }}
-          onClick={(e) => e.stopPropagation()}
-        >
-          <button onClick={() => { onOpenViewer(menu.item); setMenu(null); }}>打开大图</button>
-          <button
-            onClick={() => {
-              actions.setMarks([menu.item.id], { heart: Math.min(5, (menu.item.heart || 0) + 1) });
-              setMenu(null);
-            }}
-          >加一颗心（当前 {(menu.item.heart || 0)}）</button>
-          <button
-            onClick={() => {
-              actions.setMarks([menu.item.id], { rejected: menu.item.rejected === 1 ? 0 : 1 });
-              setMenu(null);
-            }}
-          >{menu.item.rejected === 1 ? '取消废标' : '标为废片'}</button>
-          <div className="ctx-sep" />
-          {[0, 1, 2, 3, 4].map((lv) => (
-            <button key={lv} onClick={() => { actions.setAge([menu.item.id], lv); setMenu(null); }}>分级 L{lv}</button>
-          ))}
-          <div className="ctx-sep" />
-          <button className="danger" onClick={() => { actions.trash([menu.item.id]); setMenu(null); }}>移入回收站</button>
-        </div>
+        <CtxMenu
+          menu={menu}
+          onClose={() => setMenu(null)}
+          onOpenViewer={onOpenViewer}
+          onFindSimilar={findSimilar}
+          hashProg={hashProg}
+          collections={collections}
+          selection={selection}
+          libraryId={libraryId}
+          actions={actions}
+          say={say}
+        />
+      )}
+
+      {similar && (
+        <SimilarPanel
+          similar={similar}
+          hashProg={hashProg}
+          busy={similarBusy}
+          onClose={() => setSimilar(null)}
+          onOpenViewer={onOpenViewer}
+        />
       )}
     </section>
   );
 }
+

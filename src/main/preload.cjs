@@ -15,6 +15,9 @@ const CHANNELS = Object.freeze([
   'browse:folders', 'browse:page', 'browse:count',
   'image:get', 'image:marks', 'image:age', 'image:dimensions', 'image:prompt',
   'image:rename-preview', 'image:rename-apply',
+  'image:find-similar', 'image:hash-build', 'image:hash-stats', 'image:export-sidecar',
+  'collection:list', 'collection:create', 'collection:rename', 'collection:remove',
+  'collection:add', 'collection:remove-items',
   'thumb:get', 'thumb:cache-stats', 'thumb:cache-clear',
   'prompt:save', 'prompt:save-manual', 'prompt:list', 'prompt:get', 'prompt:update', 'prompt:remove',
   'tag:import-csv', 'tag:pick-csv', 'tag:search', 'tag:suggest', 'tag:of-image', 'tag:attach', 'tag:detach',
@@ -24,7 +27,7 @@ const CHANNELS = Object.freeze([
   'app:log-path', 'app:log-open', 'log:renderer',
 ]);
 
-const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress', 'window:maximized']);
+const EVENTS = Object.freeze(['scan:progress', 'browse:changed', 'tags-updated', 'tag:progress', 'window:maximized', 'hash:progress', 'collections-updated']);
 
 async function invoke(channel, payload) {
   if (!CHANNELS.includes(channel)) {

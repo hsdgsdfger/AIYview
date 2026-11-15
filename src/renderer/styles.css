@@ -627,25 +627,29 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 /* 1:1 原始像素 / 按住空格看原图：不压到窗口，保持真实尺寸 */
 .viewer-stage.actual { cursor: grab; }
 .viewer-stage img.actual { max-width: none; max-height: none; }
-/* 提示词栏开关（Tab 同效） */
+/* 提示词栏开关：正常流式的小方按钮（不再被右侧翻页条盖住） */
+.viewer-tools {
+  flex: 0 0 36px;
+  align-self: stretch;
+  display: flex;
+  justify-content: center;
+  padding-top: 10px;
+}
 .viewer-side-toggle {
-  position: absolute;
-  top: 10px;
-  z-index: 4;
-  width: 26px;
-  height: 26px;
+  width: 30px;
+  height: 30px;
   display: grid;
   place-items: center;
   padding: 0;
-  border-radius: 7px;
+  border-radius: 8px;
   border: 1px solid rgba(255, 255, 255, 0.18);
   background: rgba(24, 27, 33, 0.72);
   color: #cfd4dc;
   font-size: 13px;
   cursor: pointer;
-  transition: right 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+  transition: color 0.12s ease, border-color 0.12s ease, background 0.12s ease;
 }
-.viewer-side-toggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
+.viewer-side-toggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.45); background: rgba(38, 42, 50, 0.9); }
 .viewer-side {
   width: 310px;
   flex: 0 0 310px;
@@ -1091,3 +1095,76 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .side-head-toggle:hover { color: var(--text); }
 .side-head .icon-btn { cursor: pointer; }
+
+/* ---------------- 相似图面板 ---------------- */
+.similar-mask {
+  position: fixed;
+  inset: 0;
+  z-index: 60;
+  background: rgba(6, 7, 10, 0.62);
+  display: grid;
+  place-items: center;
+}
+.similar-panel {
+  width: min(920px, 86vw);
+  max-height: 82vh;
+  display: flex;
+  flex-direction: column;
+  border-radius: 12px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: #14161c;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.5);
+  overflow: hidden;
+}
+.similar-head {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 12px 14px;
+  border-bottom: 1px solid rgba(255, 255, 255, 0.08);
+}
+.similar-title { font-size: 13px; color: var(--text); font-weight: 600; }
+.similar-sub { font-size: 12px; color: var(--muted); }
+.similar-close {
+  margin-left: auto;
+  width: 24px;
+  height: 24px;
+  border-radius: 6px;
+  border: 1px solid rgba(255, 255, 255, 0.14);
+  background: transparent;
+  color: var(--muted);
+  cursor: pointer;
+}
+.similar-close:hover { color: #fff; border-color: rgba(255, 255, 255, 0.4); }
+.similar-empty { padding: 26px 14px; font-size: 13px; color: var(--muted); }
+.similar-grid {
+  padding: 12px;
+  display: grid;
+  grid-template-columns: repeat(4, 1fr);
+  gap: 10px;
+  overflow: auto;
+}
+.similar-cell { position: relative; }
+.similar-cell .thumb { margin: 0; }
+.similar-dist {
+  position: absolute;
+  left: 6px;
+  bottom: 6px;
+  padding: 1px 5px;
+  border-radius: 5px;
+  background: rgba(0, 0, 0, 0.7);
+  color: #d7dce4;
+  font-size: 11px;
+}
+.similar-foot { padding: 8px 14px; border-top: 1px solid rgba(255, 255, 255, 0.08); font-size: 12px; color: var(--muted); }
+
+/* 同组标记：卡片左侧一条组色，右上角小标签 */
+.thumb.grouped { box-shadow: inset 3px 0 0 hsl(var(--g, 200) 70% 55%); border-radius: var(--radius); }
+.badge.group {
+  top: 5px;
+  left: 5px;
+  color: hsl(var(--g, 200) 80% 78%);
+  background: hsla(var(--g, 200), 60%, 20%, 0.72);
+}
+.thumb.grouped .badge.reject { top: 26px; }
+
