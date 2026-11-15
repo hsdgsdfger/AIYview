@@ -1,7 +1,7 @@
 ﻿; AIYview 安装包（NSIS）
 ;
 ; 用法：
-;   makensis /DAPP_VERSION=0.1.2 /DSRC=<win-unpacked 绝对路径> /DOUT=<输出 exe 绝对路径> scripts\installer.nsi
+;   makensis /DAPP_VERSION=0.1.3 /DSRC=<win-unpacked 绝对路径> /DOUT=<输出 exe 绝对路径> scripts\installer.nsi
 ;
 ; 特点：单用户安装（RequestExecutionLevel user，不弹 UAC），默认装到 %LOCALAPPDATA%\Programs\AIYview，
 ; 建开始菜单 + 桌面快捷方式，写 HKCU 卸载项；卸载时可选择是否一并删除 %APPDATA%\aiyview 用户数据。
@@ -11,7 +11,7 @@ Unicode true
 !include "FileFunc.nsh"
 
 !ifndef APP_VERSION
-  !define APP_VERSION "0.1.2"
+  !define APP_VERSION "0.1.3"
 !endif
 !ifndef SRC
   !error "缺少 /DSRC（win-unpacked 目录）"
@@ -38,7 +38,7 @@ ShowInstDetails show
 ShowUninstDetails show
 XPStyle on
 
-VIProductVersion "0.1.2.0"
+VIProductVersion "0.1.3.0"
 VIAddVersionKey "ProductName" "${APP_NAME}"
 VIAddVersionKey "FileDescription" "${APP_NAME} 安装程序"
 VIAddVersionKey "FileVersion" "${APP_VERSION}"
