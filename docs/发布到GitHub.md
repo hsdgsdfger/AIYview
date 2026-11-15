@@ -2,7 +2,7 @@
 
 这份文档是给「已经改好代码、只差发布」的状态准备的。按顺序做，每一步都写了可以直接复制粘贴的命令。
 
-> **当前状态（2026-11-15 已发布）**：本地 `origin` 指向 `https://github.com/hsdgsdfger/AIYview`，本地分支 `master` 跟踪 `origin/main`（远端默认分支就是 `main`，推代码用 `git push origin master:main`）。`v3.0` 已打 tag 并发布 Release，附件是 `AIYview-Setup-0.1.0-x64.exe`（116 MB）和 `AIYview-0.1.0-portable-win-x64.zip`（163 MB）。下面第 1–4 节属于「从零再发一遍」的流程，日常迭代只需 `git push` + `gh release upload`。
+> **当前状态（2026-11-15 已发布）**：本地 `origin` 指向 `https://github.com/hsdgsdfger/AIYview`，本地分支已改名 `main` 并跟踪 `origin/main`，日常迭代直接 `git push`。`v3.0` 已打 tag 并发布 Release，附件是 `AIYview-Setup-0.1.0-x64.exe`（116 MB）和 `AIYview-0.1.0-portable-win-x64.zip`（163 MB）。如果 `git push` 报 `Connection was reset` / `Failed to connect to github.com:443`（GitHub 域名被间歇性阻断，`api.github.com` 却正常），跑 `powershell -File scripts\gh-push.ps1`，它会把连接钉到几个可用 IP 上轮流重试。下面第 1–4 节属于「从零再发一遍」的流程。
 
 ---
 
