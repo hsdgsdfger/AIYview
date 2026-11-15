@@ -16,7 +16,7 @@ const { getDb, closeDb, ensureMediaRoots, thumbnailsDir, registerMediaRoot } = r
 const { registerBrowseIpc } = require('./services/browse.cjs');
 const { registerLibraryPickerIpc } = require('./services/libraryPicker.cjs');
 const { registerScanIpc } = require('./services/scanner.cjs');
-const { registerThumbIpc } = require('./services/thumbs.cjs');
+const { registerThumbIpc, flushThumbCache } = require('./services/thumbs.cjs');
 const { registerPromptIpc } = require('./services/prompts.cjs');
 const { registerPromptLibraryIpc } = require('./services/promptLibrary.cjs');
 const { registerTagIpc } = require('./services/tags.cjs');
@@ -314,6 +314,8 @@ if (!app.requestSingleInstanceLock()) {
   });
 
   app.on('will-quit', () => {
+    // 缩略图索引不落盘的话，下次启动等于全部重算（磁盘上缓存白留）
+    flushThumbCache().catch((error) => logger.warn('thumb', '退出前写索引失败', { message: error.message }));
     // 退出前把 WAL 收进主库，避免下次启动前的强杀丢掉刚刚点的标记
     try {
       const db = getDb();

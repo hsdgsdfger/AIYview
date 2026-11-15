@@ -49,12 +49,35 @@ export default function Thumb({ item, selected, hovered, onHover, onClick, onCon
     ? { background: `rgba(14, 16, 22, ${maskAlpha})` }
     : undefined;
 
+  // 遮挡层手势：区分单击（切显示/复原）与双击（进大图）
+  const gestureRef = useRef({ at: 0, revealed: false });
+
   const handleOverlayClick = (e) => {
     e.stopPropagation();
+    const now = Date.now();
+    const newGesture = now - gestureRef.current.at > 400;
+    gestureRef.current.at = now;
+    if (!newGesture) return; // 双击的第二下不再当单击处理（否则会「显示又复原」闪一下）
     // 切换显示/恢复遮挡，同时按正常规则选中
-    if (isRevealed) actions.unreveal(item.id);
-    else actions.reveal(item.id);
+    if (isRevealed) {
+      actions.unreveal(item.id);
+      gestureRef.current.revealed = false;
+    } else {
+      actions.reveal(item.id);
+      gestureRef.current.revealed = true;
+    }
     onClick(item, e);
+  };
+
+  /** 被屏蔽的图：双击只当「显示」用，露出来之后再双击才进大图 */
+  const handleOverlayDouble = (e) => {
+    e.stopPropagation();
+    if (gestureRef.current.revealed) {
+      gestureRef.current.revealed = false;
+      return;
+    }
+    if (!isRevealed) actions.reveal(item.id); // 已显示时双击：单击那一下复原过，这里补回来
+    onDouble?.(item);
   };
 
   return (
@@ -110,10 +133,7 @@ export default function Thumb({ item, selected, hovered, onHover, onClick, onCon
             className={`occlude-mask mode-${occlusion.mode} ${isRevealed ? 'revealed' : ''}`}
             style={maskStyle}
             onClick={handleOverlayClick}
-            onDoubleClick={(e) => {
-              e.stopPropagation();
-              onDouble?.(item);
-            }}
+            onDoubleClick={handleOverlayDouble}
             title={isRevealed ? '点击恢复遮挡' : '点击显示'}
           />
         )}

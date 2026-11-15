@@ -45,7 +45,8 @@ class ThumbnailCacheStore {
     this.entries = new Map(); // 插入顺序 = LRU 顺序（尾部最新）
     this.totalBytes = 0;
     this.dirty = false;
-    this.metrics = { hits: 0, misses: 0, evicted: 0, writes: 0 };
+    this.saveTimer = null;
+    this.metrics = { hits: 0, misses: 0, evicted: 0, writes: 0, reindexed: 0 };
   }
 
   key(filePath, size) {
@@ -94,10 +95,71 @@ class ThumbnailCacheStore {
       }
     }));
 
+    // 目录里已有、索引里没有的缓存文件重新登记（否则每次启动都白重算一遍）
+    this.metrics.reindexed = await this.reindexDisk();
+
     const evicted = await this.enforceQuota();
     this.dirty = true;
     await this.save();
-    return { entries: this.entries.size, bytes: this.totalBytes, evicted };
+    return { entries: this.entries.size, bytes: this.totalBytes, evicted, reindexed: this.metrics.reindexed };
+  }
+
+  /**
+   * 把缓存目录里「索引没记」的 jpg 补登记进来。
+   * 文件名是 `<md5(源路径)>_<尺寸>.jpg`，源路径无法反推，所以 filePath 留空，
+   * mtime 记 0（下次真正命中该图时再补上源 mtime，见 lookup）。
+   */
+  async reindexDisk() {
+    if (typeof this.fs.readdir !== 'function' || typeof this.fs.stat !== 'function') return 0;
+    let names = [];
+    try {
+      names = await this.fs.readdir(this.dir);
+    } catch {
+      return 0;
+    }
+    const pattern = /^[0-9a-f]{32}_(\d+)\.jpg$/;
+    let added = 0;
+    await Promise.all(names.map(async (name) => {
+      const m = pattern.exec(name);
+      if (!m) return;
+      const cachePath = nodePath.join(this.dir, name);
+      if (this.entries.has(cachePath)) return;
+      try {
+        const st = await this.fs.stat(cachePath);
+        this.entries.set(cachePath, {
+          filePath: '',
+          size: Number(m[1]),
+          bytes: Number(st.size) || 0,
+          atime: Number(st.mtimeMs) || 0,
+          mtime: 0,
+        });
+        this.totalBytes += Number(st.size) || 0;
+        added += 1;
+      } catch {
+        /* 读不到的单条跳过，不影响其它 */
+      }
+    }));
+    if (added > 0) this.dirty = true;
+    return added;
+  }
+
+  /** 攒一会儿再写索引（每次出图都写一次 JSON 太亏） */
+  scheduleSave() {
+    if (this.saveTimer) return;
+    this.saveTimer = setTimeout(() => {
+      this.saveTimer = null;
+      this.save();
+    }, 1500);
+    if (this.saveTimer.unref) this.saveTimer.unref();
+  }
+
+  /** 退出前强制落盘 */
+  async flush() {
+    if (this.saveTimer) {
+      clearTimeout(this.saveTimer);
+      this.saveTimer = null;
+    }
+    await this.save();
   }
 
   async save() {
@@ -133,6 +195,12 @@ class ThumbnailCacheStore {
       this.metrics.misses++;
       return { hit: false, cachePath, stale: true };
     }
+    // 补登记的老条目：不知道源 mtime，第一次真正命中时补上，之后就能正常判失效
+    if (!entry.mtime && typeof sourceMtimeMs === 'number' && sourceMtimeMs > 0) {
+      entry.mtime = sourceMtimeMs;
+      entry.filePath = filePath;
+      this.dirty = true;
+    }
     // LRU 提权
     this.entries.delete(cachePath);
     entry.atime = this.now();
@@ -160,6 +228,7 @@ class ThumbnailCacheStore {
     this.totalBytes += bytes || 0;
     this.metrics.writes++;
     this.dirty = true;
+    this.scheduleSave();
 
     const evicted = await this.enforceQuota();
     return { cachePath, evicted };

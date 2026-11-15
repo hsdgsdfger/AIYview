@@ -1,4 +1,4 @@
-import { useEffect, useMemo, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import Hearts from './Hearts.jsx';
 import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
@@ -11,6 +11,8 @@ export default function Viewer({ item, onClose, onNav }) {
   const { actions, shortcuts, promptWidth } = useStore();
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
+  const [mode, setMode] = useState('fit');   // 'fit' 适应窗口 | 'actual' 1:1 原始像素
+  const [peek, setPeek] = useState(false);   // 按住空格：临时按原图看（松开还原）
   const [info, setInfo] = useState(null);
   const [prompt, setPrompt] = useState(null);
   const [showParams, setShowParams] = useState(false);
@@ -18,11 +20,20 @@ export default function Viewer({ item, onClose, onNav }) {
   useEffect(() => {
     setScale(1);
     setOffset({ x: 0, y: 0 });
+    setMode('fit');
+    setPeek(false);
     setInfo(null);
     setPrompt(null);
     window.aiyview.image.get({ id: item.id }).then((r) => r.ok && setInfo(r.data));
     window.aiyview.image.prompt({ id: item.id }).then((r) => r.ok && setPrompt(r.data));
   }, [item.id]);
+
+  /** fit ↔ 1:1 切换时归零缩放和位移，免得两种模式下滚轮/拖动状态互相污染 */
+  const setViewMode = (next) => {
+    setMode(next);
+    setScale(1);
+    setOffset({ x: 0, y: 0 });
+  };
 
   useEffect(() => {
     const onKey = (e) => {
@@ -33,6 +44,18 @@ export default function Viewer({ item, onClose, onNav }) {
       if (e.key === '-') { setScale((s) => Math.max(0.1, s / 1.25)); return; }
 
       if (isTypingTarget(e.target)) return;
+      // 空格：按住看原图（1:1），松开回原来的模式
+      if (e.code === 'Space' || e.key === ' ') {
+        e.preventDefault();
+        setPeek(true);
+        return;
+      }
+      // 0 = 适应窗口 / 1:1 切换（和修图软件的「实际像素」一致）
+      if (e.key === '0') {
+        e.preventDefault();
+        setViewMode(mode === 'fit' ? 'actual' : 'fit');
+        return;
+      }
       const combo = comboOf(e);
       if (!combo) return;
       const action = actionForCombo(shortcuts, combo);
@@ -61,7 +84,35 @@ export default function Viewer({ item, onClose, onNav }) {
     };
     window.addEventListener('keydown', onKey);
     return () => window.removeEventListener('keydown', onKey);
-  }, [item, onClose, onNav, actions, shortcuts]);
+  }, [item, onClose, onNav, actions, shortcuts, mode]);
+
+  /* 空格松开 / 窗口失焦 → 收起原图预览 */
+  useEffect(() => {
+    const onUp = (e) => {
+      if (e.code === 'Space' || e.key === ' ') setPeek(false);
+    };
+    const onBlur = () => setPeek(false);
+    window.addEventListener('keyup', onUp);
+    window.addEventListener('blur', onBlur);
+    return () => {
+      window.removeEventListener('keyup', onUp);
+      window.removeEventListener('blur', onBlur);
+    };
+  }, []);
+
+  /* 临时看原图时把平移清零，松开能回到原来的位置 */
+  const offsetRef = useRef(offset);
+  offsetRef.current = offset;
+  const peekSavedRef = useRef(null);
+  useEffect(() => {
+    if (peek) {
+      peekSavedRef.current = offsetRef.current;
+      setOffset({ x: 0, y: 0 });
+    } else if (peekSavedRef.current) {
+      setOffset(peekSavedRef.current);
+      peekSavedRef.current = null;
+    }
+  }, [peek]);
 
   const onWheel = (e) => {
     e.preventDefault();
@@ -78,6 +129,8 @@ export default function Viewer({ item, onClose, onNav }) {
     return 'media://local/' + info.absPath.split('\\').join('/');
   }, [info]);
 
+  const actual = mode === 'actual' || peek;
+
   return (
     <div className="viewer" onClick={(e) => e.target === e.currentTarget && onClose()}>
       {/* 左右两条翻页热区：整条边（约占视图 1/24 宽）都能点，中间一个小方框箭头提示 */}
@@ -85,13 +138,23 @@ export default function Viewer({ item, onClose, onNav }) {
         <span className="vn-arrow">‹</span>
       </button>
 
-      <div className="viewer-stage" onWheel={onWheel} onMouseMove={onDrag}>
+      <div
+        className={`viewer-stage ${actual ? 'actual' : ''}`}
+        onWheel={onWheel}
+        onMouseMove={onDrag}
+        onDoubleClick={() => setViewMode(mode === 'fit' ? 'actual' : 'fit')}
+        title={actual ? '1:1 原始像素（双击 / 空格 / 0 切换回适应窗口）' : '适应窗口（按住空格看原图，双击 / 0 切到 1:1）'}
+      >
         {url ? (
           <img
             src={url}
             alt={item.file_name}
             draggable={false}
-            style={{ transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})` }}
+            className={actual ? 'actual' : ''}
+            style={{
+              transform: `translate(${offset.x}px, ${offset.y}px) scale(${scale})`,
+              ...(actual && info ? { width: info.width || undefined, height: info.height || undefined } : {}),
+            }}
           />
         ) : (
           <div className="thumb-placeholder" style={{ width: 320, height: 320 }}><span className="spin" /></div>

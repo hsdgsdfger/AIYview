@@ -205,7 +205,7 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .rail-btn:hover { background: var(--panel2); color: var(--text); }
 .rail-btn.on { background: var(--accent-soft); color: var(--accent); }
-.rail-sep { width: 22px; height: 1px; background: var(--line); margin: 4px 0; }
+.rail-sep { width: 22px; height: 1px; background: var(--line); margin: 6px 0 6px; flex: 0 0 auto; }
 .side-search {
   display: flex;
   align-items: center;
@@ -624,6 +624,9 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   transition: transform 0.05s linear;
   will-change: transform;
 }
+/* 1:1 原始像素 / 按住空格看原图：不压到窗口，保持真实尺寸 */
+.viewer-stage.actual { cursor: grab; }
+.viewer-stage img.actual { max-width: none; max-height: none; }
 .viewer-side {
   width: 310px;
   flex: 0 0 310px;

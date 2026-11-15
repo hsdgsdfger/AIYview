@@ -134,4 +134,10 @@ function registerThumbIpc() {
   });
 }
 
-module.exports = { registerThumbIpc, getThumbnails, SIZES };
+/** 退出前把缩略图索引落盘；没初始化过就什么都不用做 */
+async function flushThumbCache() {
+  if (!cache) return;
+  await cache.flush();
+}
+
+module.exports = { registerThumbIpc, getThumbnails, flushThumbCache, SIZES };

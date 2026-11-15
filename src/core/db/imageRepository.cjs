@@ -169,8 +169,21 @@ function buildFilters(filters = {}) {
     params.tagId = filters.tagId;
   }
   if (filters.nameLike) {
-    where.push('file_name LIKE @nameLike');
-    params.nameLike = `%${filters.nameLike}%`;
+    const raw = String(filters.nameLike).trim();
+    // `tag:` 前缀 = 只在标签里找；否则文件名 / 标签 / 提示词一起找
+    const tagOnly = /^tag:/i.test(raw) ? raw.slice(4).trim() : '';
+    const q = `%${tagOnly || raw}%`;
+    const tagHit = `id IN (SELECT it.image_id FROM image_tags it JOIN tags t ON t.id = it.tag_id
+      WHERE t.name LIKE @q OR IFNULL(t.name_zh, '') LIKE @q)`;
+    if (tagOnly) {
+      where.push(tagHit);
+    } else {
+      where.push(`(file_name LIKE @q
+        OR ${tagHit}
+        OR id IN (SELECT image_id FROM image_prompts
+          WHERE IFNULL(positive, '') LIKE @q OR IFNULL(negative, '') LIKE @q))`);
+    }
+    params.q = q;
   }
   return { where: `WHERE ${where.join(' AND ')}`, params };
 }

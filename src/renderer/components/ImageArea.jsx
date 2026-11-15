@@ -299,10 +299,10 @@ export default function ImageArea({ onOpenViewer }) {
           <Icon name="search" size={13} className="ab-search-ico" />
           <input
             className="ab-search-input"
-            placeholder="按文件名搜索…"
+            placeholder="搜文件名 / 标签 / 提示词…"
             value={nameInput}
             onChange={(e) => onNameChange(e.target.value)}
-            title="只匹配文件名（不区分大小写），清空即恢复"
+            title="文件名、标签、提示词一起匹配（不区分大小写）；前缀 tag: 只搜标签；清空即恢复"
           />
           {nameInput && (
             <button className="ab-search-clear" title="清空搜索" onClick={() => onNameChange('')}>×</button>

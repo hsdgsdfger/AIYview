@@ -110,6 +110,8 @@ export default function Sidebar() {
             title={library ? `${library.name}（全部）` : '全部图片'}
             onClick={pickAll}
           ><Icon name="folder" size={16} /></button>
+          {/* 分组分隔线：浏览 / 筛选 / 管理 三段，收起成图标条时不至于糊成一片 */}
+          <div className="rail-sep" />
           <button
             className={`rail-btn ${heartOnly ? 'on' : ''}`}
             title="收藏图片"
