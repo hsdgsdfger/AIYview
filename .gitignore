@@ -29,5 +29,6 @@ coverage/
 Thumbs.db
 .DS_Store
 
-# 发布用压缩包（只作为 Release 附件上传，不进仓库）
+# 发布用压缩包 / 安装包（只作为 Release 附件上传，不进仓库）
 *.zip
+/AIYview-Setup-*.exe

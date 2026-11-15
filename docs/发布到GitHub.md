@@ -15,6 +15,8 @@
 | `.github/workflows/release.yml` | 打 tag 时在 Windows runner 出 NSIS 安装包 + 绿色版 zip，并自动挂到 Release |
 | `release/v3.0/win-unpacked/` | 本地可用的绿色版（`AIYview.exe`，约 395 MB） |
 | `AIYview-0.1.0-portable-win-x64.zip` | 上面这个绿色版的压缩包，可直接作为 Release 附件上传 |
+| `AIYview-Setup-0.1.0-x64.exe` | 安装版（NSIS 编译，116 MB），同样可直接上传 |
+| `scripts/installer.nsi` | 安装包脚本（单用户安装、快捷方式、卸载项、卸载时询问是否删数据） |
 
 代码里已清掉的敏感内容：个人绝对路径、内网地址、密钥类字面量、旧品牌名、仓库内的数据库备份与日志（全部已被 `.gitignore` 拦住）。每次发版前想再确认一次：
 
@@ -55,7 +57,7 @@ git config --global user.email "you@example.com"
 ```bash
 cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
 
-git remote add origin https://github.com/<你的用户名>/AIYview.git
+git remote add origin https://github.com/xianwan/AIYview.git
 git branch -M master
 git push -u origin master
 ```
@@ -106,14 +108,32 @@ git push origin v3.0
 
 ## 4. 如果暂时不想让 CI 打包：手动发一版
 
-```bash
-# 1) 用本地现成的绿色版做附件（已经把跨平台二进制和多余语言包裁掉了）
-Compress-Archive -Path "release\v3.0\win-unpacked\*" -DestinationPath "AIYview-0.1.0-portable-win-x64.zip" -CompressionLevel Optimal
+本地已经有两种产物，直接拖进 Release 即可：
 
-# 2) 网页操作：仓库 → Releases → Draft a new release
-#    Tag: v3.0   Title: AIYview v3.0
-#    附件：把上面那个 zip 拖进 “Attach binaries”
+| 文件 | 说明 |
+| --- | --- |
+| `AIYview-Setup-0.1.0-x64.exe` | **安装版**（NSIS，116 MB）：单用户安装、不弹 UAC、可选目录、开始菜单 + 桌面快捷方式、写卸载项 |
+| `AIYview-0.1.0-portable-win-x64.zip` | **绿色版**（163 MB）：解压双击 `AIYview.exe` |
+
+安装包是 `scripts/installer.nsi` 编出来的，想重新生成（需要 `makensis.exe`，NSIS 3.x）：
+
+```powershell
+cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+& "<makensis 路径>\makensis.exe" /V2 /DAPP_VERSION=0.1.0 `
+  "/DSRC=$((Resolve-Path 'release\v3.0\win-unpacked').Path)" `
+  "/DOUT=$((Get-Location).Path)\AIYview-Setup-0.1.0-x64.exe" `
+  "scripts\installer.nsi"
 ```
+
+> `.nsi` 必须是 **UTF-8 with BOM**，否则 makensis 报 `Bad text encoding`。Git 里已是 BOM 版本，改动时注意别丢掉。
+
+绿色版想重新压：
+
+```powershell
+Compress-Archive -Path "release\v3.0\win-unpacked\*" -DestinationPath "AIYview-0.1.0-portable-win-x64.zip" -CompressionLevel Optimal
+```
+
+网页操作：仓库 → Releases → Draft a new release → Tag `v3.0`、Title `AIYview v3.0` → 把这两个文件拖进 “Attach binaries”。
 
 Release 说明可以直接写这几条：
 

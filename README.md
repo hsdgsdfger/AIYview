@@ -56,6 +56,17 @@ npm run prune            # 裁剪：onnxruntime 只留 win32/x64、语言包只�
 
 完整安装包（NSIS / zip）由 GitHub Actions 在 tag 推送时构建，见 `.github/workflows/release.yml`。
 
+想在本机出一个安装包（脚本在 `scripts/installer.nsi`，需要先有 `makensis.exe`）：
+
+```powershell
+& "<makensis 路径>\makensis.exe" /V2 /DAPP_VERSION=0.1.0 `
+  "/DSRC=$((Resolve-Path 'release\v3.0\win-unpacked').Path)" `
+  "/DOUT=$((Get-Location).Path)\AIYview-Setup-0.1.0-x64.exe" `
+  "scripts\installer.nsi"
+```
+
+安装包行为：单用户安装（不弹 UAC，默认装到 `%LOCALAPPDATA%\Programs\AIYview`）、可选安装目录、开始菜单 + 桌面快捷方式、写 `HKCU` 卸载项；卸载时单独询问是否一并删除 `%APPDATA%\aiyview` 里的图库数据（默认保留，静默卸载绝不删）。
+
 ## 结构
 
 ```
