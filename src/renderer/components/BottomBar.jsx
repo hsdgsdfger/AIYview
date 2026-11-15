@@ -11,7 +11,7 @@ import Icon from './Icon.jsx';
  * 设置里收：最近删除、标签、提示词库、批量重命名、标签字典、缩略图缓存、界面缩放、快捷键、日志、主题。
  */
 export default function BottomBar() {
-  const { selection, actions, tagging, status, say } = useStore();
+  const { selection, actions, tagging, status, say, hoverEdit, setHoverEdit } = useStore();
   const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | 'shortcuts' | 'cache' | 'scale' | 'rename'
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
@@ -129,6 +129,17 @@ export default function BottomBar() {
                 <button onClick={() => open('scale')}>
                   <Icon name="panel-expand" size={14} />
                   <span>界面缩放</span>
+                </button>
+                <button
+                  onClick={() => {
+                    setHoverEdit(!hoverEdit);
+                    setSettingsOpen(false);
+                  }}
+                  title="鼠标停在缩略图上就能标记/分级，和选中一样"
+                >
+                  <Icon name="search" size={14} />
+                  <span>悬停即编辑</span>
+                  <em>{hoverEdit ? '开' : '关'}</em>
                 </button>
                 <div className="settings-sep" />
                 <button onClick={() => open('shortcuts')}>

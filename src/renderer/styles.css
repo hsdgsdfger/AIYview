@@ -332,6 +332,9 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .thumb:hover .thumb-box { outline: 1px solid var(--accent); outline-offset: -1px; }
 .thumb.selected .thumb-box { outline: 2px solid var(--accent); outline-offset: -2px; }
+/* 悬停即编辑：与选中同样的描边，操作条/快捷键直接作用于这张 */
+.thumb.hovered .thumb-box { outline: 2px solid var(--accent); outline-offset: -2px; }
+.thumb.hovered .thumb-box::after { content: ''; position: absolute; inset: 0; box-shadow: inset 0 0 0 1px rgba(255,255,255,.35); pointer-events: none; }
 /* 模糊方式：只糊图，不压色（放大一点防止模糊取样露边） */
 .thumb-box.occlude-blur img { filter: blur(var(--occ-blur, 18px)) saturate(0.8); transform: scale(1.08); }
 

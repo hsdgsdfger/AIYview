@@ -6,7 +6,7 @@
 /** 启动时读回偏好；读不到的项返回 null，调用方保留默认值 */
 export async function loadPrefs() {
   const get = (key) => window.aiyview.settings.get({ key }).then((r) => (r.ok ? r.data : null)).catch(() => null);
-  const [theme, sort, shortcuts, occlusion, sidebar, view, win] = await Promise.all([
+  const [theme, sort, shortcuts, occlusion, sidebar, view, win, hoverEdit] = await Promise.all([
     get('theme'),
     get('sort'),
     get('shortcuts'),
@@ -14,8 +14,9 @@ export async function loadPrefs() {
     get('sidebar'),
     get('view'),
     window.aiyview.window.state().then((r) => (r.ok ? r.data : null)).catch(() => null),
+    get('hoverEdit'),
   ]);
-  return { theme, sort, shortcuts, occlusion, sidebar, view, win };
+  return { theme, sort, shortcuts, occlusion, sidebar, view, win, hoverEdit };
 }
 
 /** 视图状态 → settings.view 的落盘结构（键名保持向后兼容） */

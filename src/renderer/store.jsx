@@ -46,6 +46,8 @@ export function StoreProvider({ children }) {
   const [total, setTotal] = useState(0);
   /** 后台发现新图但没刷新列表时的提示数（不打断滚动） */
   const [pendingNew, setPendingNew] = useState(0);
+  /** 悬停即编辑：鼠标停在缩略图上时，操作条和快捷键就作用于它（可在设置里关掉） */
+  const [hoverEdit, setHoverEditState] = useState(true);
 
   const stateRef = useRef({});
   stateRef.current = {
@@ -95,6 +97,21 @@ export function StoreProvider({ children }) {
     window.aiyview.settings.set({ key: 'sort', value });
   }, []);
 
+  /** 悬停即编辑：写盘并生效 */
+  const setHoverEdit = useCallback((v) => {
+    setHoverEditState(Boolean(v));
+    window.aiyview.settings.set({ key: 'hoverEdit', value: Boolean(v) });
+  }, []);
+
+  /** 刷新前通知栅格「记住当前看的那张图」，ImageArea 据此补偿滚动，位置不动 */
+  const autoTimerRef = useRef(null);
+  const lastRefreshRef = useRef(0);
+  const markRefresh = useCallback(() => {
+    lastRefreshRef.current = Date.now();
+    clearTimeout(autoTimerRef.current);
+    window.dispatchEvent(new Event('aiyview:refresh-start'));
+  }, []);
+
   /** 改单个快捷键并持久化 */
   const setShortcut = useCallback((id, combo) => {
     setShortcuts((prev) => {
@@ -128,6 +145,7 @@ export function StoreProvider({ children }) {
       if (p.occlusion && typeof p.occlusion === 'object') setOcclusion((prev) => ({ ...prev, ...p.occlusion }));
       if (p.sidebar && typeof p.sidebar === 'object') setSidebar((prev) => ({ ...prev, ...p.sidebar }));
       if (p.win) setMaximized(Boolean(p.win.maximized));
+      if (typeof p.hoverEdit === 'boolean') setHoverEditState(p.hoverEdit);
 
       const v = p.view && typeof p.view === 'object' ? p.view : null;
       if (v) {
@@ -182,6 +200,35 @@ export function StoreProvider({ children }) {
     const res = await window.aiyview.browse.count({ libraryId: s.libraryId, filters: filtersOf(s) });
     if (res && res.ok) setTotal(Number(res.data) || 0);
   }, [filtersOf]);
+
+  /**
+   * 刷新（默认按时间排序时）：只把第 1 页里的「新图」插到最前面，已有卡片原地不动。
+   * 这样新图自己出现，滚动位置和当前看的那张都不会跳；其它排序才走整表重置。
+   */
+  const refreshList = useCallback(async () => {
+    const s = stateRef.current;
+    markRefresh();
+    setPendingNew(0);
+    if (s.libraryId == null) return;
+    if (s.sort !== 'mtime_desc') {
+      setVersion((v) => v + 1);
+      return;
+    }
+    const res = await window.aiyview.browse.page({
+      libraryId: s.libraryId, cursor: null, limit: 60, sort: s.sort, filters: filtersOf(s),
+    });
+    if (!res.ok) {
+      setVersion((v) => v + 1);
+      return;
+    }
+    const page = res.data.items;
+    setItems((prev) => {
+      const ids = new Set(prev.map((i) => i.id));
+      const fresh = page.filter((i) => !ids.has(i.id));
+      return fresh.length ? fresh.concat(prev) : prev;
+    });
+    refreshCount();
+  }, [markRefresh, filtersOf, refreshCount]);
 
   /* 切库 → 目录树 + 标签栏；筛选复位 */
   useEffect(() => {
@@ -252,13 +299,18 @@ export function StoreProvider({ children }) {
   /* 主进程事件 */
   useEffect(() => {
     const offProgress = window.aiyview.on('scan:progress', (p) => setScanProgress(p));
-    // 后台扫描/改名发现新图：只更新总数并亮「刷新」提示，绝不重排正在看的列表
+    // 后台扫描/改名发现新图：静默自动刷新（位置靠 ImageArea 锚定补偿），不打断浏览
     const offChanged = window.aiyview.on('browse:changed', (p) => {
       const reason = p && p.reason;
-      if (reason === 'scan' || reason === 'watch' || reason === 'rename') {
-        setPendingNew((n) => n + 1);
-        refreshCount();
-      }
+      if (reason !== 'scan' && reason !== 'watch' && reason !== 'rename') return;
+      setPendingNew((n) => n + 1);
+      refreshCount();
+      // 自己刚刷新过就忽略这批变更，避免一次扫描触发两轮重载
+      if (Date.now() - lastRefreshRef.current < 4000) return;
+      clearTimeout(autoTimerRef.current);
+      autoTimerRef.current = setTimeout(() => {
+        refreshList();
+      }, 1200);
     });
     // 打标/加删标签完成后刷新侧栏标签（原先没人订阅，计数一直是旧的）
     const offTags = window.aiyview.on('tags-updated', () => {
@@ -270,25 +322,36 @@ export function StoreProvider({ children }) {
       setTagging(p);
     });
     return () => {
+      clearTimeout(autoTimerRef.current);
       offProgress();
       offChanged();
       offTags();
       offTag();
     };
-  }, [refreshCount, refreshTags]);
+  }, [refreshCount, refreshTags, markRefresh, refreshList]);
 
   const actions = useActions({
     libraryId, run, say,
     setItems, setSelection, setLibraries, setLibraryId,
     setScanning, setScanProgress, setTagging, setRevealed,
-    setPendingNew, setVersion,
+    setPendingNew, setVersion, markRefresh, refreshList,
   });
+
+  /* 启动自动刷新：打开软件就对当前库扫一遍，新图自己出现（滚动位置由栅格锚定） */
+  const bootRef = useRef(new Set());
+  useEffect(() => {
+    if (libraryId == null || bootRef.current.has(libraryId)) return;
+    bootRef.current.add(libraryId);
+    window.aiyview.scan.run({ libraryId }).then((r) => {
+      if (r && r.ok) actions.refresh();
+    });
+  }, [libraryId, actions]);
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
-    total, pendingNew,
+    total, pendingNew, hoverEdit, setHoverEdit,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
@@ -306,6 +369,7 @@ export function StoreProvider({ children }) {
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
     total, pendingNew, refreshTags, refreshCount,
+    hoverEdit, setHoverEdit,
     rememberScroll,
     loadMore, actions, say]);
 

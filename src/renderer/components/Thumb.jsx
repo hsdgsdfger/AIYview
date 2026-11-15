@@ -11,7 +11,7 @@ import Hearts from './Hearts.jsx';
  *     · 再点一下恢复遮挡（遮挡层保持挂载，只是变透明）
  *     · 全局遮挡设置（方式/阈值）一变，所有临时显示全部复位
  */
-export default function Thumb({ item, selected, onClick, onContext, onDouble }) {
+export default function Thumb({ item, selected, hovered, onHover, onClick, onContext, onDouble }) {
   const elRef = useRef(null);
   const [url, setUrl] = useState(null);
   const [failed, setFailed] = useState(false);
@@ -61,8 +61,10 @@ export default function Thumb({ item, selected, onClick, onContext, onDouble }) 
     <div
       ref={elRef}
       data-thumb-id={item.id}
-      className={`thumb ${selected ? 'selected' : ''} ${masked ? 'occluded' : ''}`}
+      className={`thumb ${selected ? 'selected' : ''} ${hovered ? 'hovered' : ''} ${masked ? 'occluded' : ''}`}
       onClick={(e) => onClick(item, e)}
+      onMouseEnter={() => onHover?.(item.id)}
+      onMouseLeave={() => onHover?.((cur) => (cur === item.id ? null : cur))}
       onDoubleClick={() => onDouble?.(item)}
       onContextMenu={(e) => onContext?.(item, e)}
       title={item.file_name}

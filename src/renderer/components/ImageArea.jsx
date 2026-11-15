@@ -5,6 +5,7 @@ import Hearts from './Hearts.jsx';
 import Icon from './Icon.jsx';
 import OcclusionMenu from './OcclusionMenu.jsx';
 import { setSizePref } from '../thumbBus.js';
+import { useScrollAnchor } from '../useScrollAnchor.js';
 import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
 
 /**
@@ -15,13 +16,14 @@ export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
-    restore, rememberScroll, total, nameLike, setNameLike,
+    restore, rememberScroll, total, nameLike, setNameLike, hoverEdit,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
   const [heartVal, setHeartVal] = useState(0); // 本次选中后点击的心数（红心显示用）
   const [nameInput, setNameInput] = useState(nameLike || '');
   const [menu, setMenu] = useState(null);      // 右键菜单 { x, y, item }
+  const [hoverId, setHoverId] = useState(null); // 悬停即编辑：当前鼠标下的那张
   const nameTimerRef = useRef(null);
 
   /* 文件名搜索：输入防抖 300ms 再落到筛选状态（每敲一个字都查库太浪费） */
@@ -113,6 +115,10 @@ export default function ImageArea({ onOpenViewer }) {
     return () => clearTimeout(t);
   }, [restore, items.length, hasMore, loading, loadMore, rememberScroll]);
 
+  /* 刷新锚定：刷新前记住视口最上面那张图，重载后把它拉回原来的位置（浏览位置不动） */
+  /* 刷新时保住浏览位置（实现见 useScrollAnchor） */
+  useScrollAnchor({ canvasRef: scrollRef, items, hasMore, loading, loadMore });
+
   const clickItem = useCallback((item, e) => {
     if (e.shiftKey && lastIdxRef.current >= 0) {
       const a = items.findIndex((it) => it.id === lastIdxRef.current);
@@ -153,22 +159,27 @@ export default function ImageArea({ onOpenViewer }) {
   }, [items, columns]);
 
   const selectedIds = useMemo(() => [...selection], [selection]);
+  /** 悬停即编辑：没选中任何图时，操作条/快捷键作用在鼠标停留的那张上 */
+  const targetIds = useMemo(
+    () => (selectedIds.length > 0 ? selectedIds : (hoverEdit && hoverId != null ? [hoverId] : [])),
+    [selectedIds, hoverEdit, hoverId]
+  );
 
-  /* 全部选中项都已标废 → 按钮变成「取消废」 */
-  useEffect(() => { setHeartVal(0); }, [selectedIds]);
+  /* 目标变了（换选中或换悬停图）→ 心数清零 */
+  useEffect(() => { setHeartVal(0); }, [targetIds]);
 
   const allRejected = useMemo(() => {
-    if (selectedIds.length === 0) return false;
+    if (targetIds.length === 0) return false;
     const map = new Map(items.map((it) => [it.id, it]));
-    return selectedIds.every((id) => {
+    return targetIds.every((id) => {
       const it = map.get(id);
       return it && it.rejected === 1;
     });
-  }, [selectedIds, items]);
+  }, [targetIds, items]);
 
-  /* 全局快捷键：打分 / 评级 / 标废 / 删除（键位来自设置，有选中才生效；查看器打开时归查看器处理） */
+  /* 全局快捷键：打分 / 评级 / 标废 / 删除（有选中或悬停目标时生效；查看器打开时归查看器处理） */
   const hotRef = useRef({});
-  hotRef.current = { ids: selectedIds, items, shortcuts, actions };
+  hotRef.current = { ids: targetIds, items, shortcuts, actions };
   useEffect(() => {
     const onKey = (e) => {
       if (isTypingTarget(e.target)) return;
@@ -219,23 +230,23 @@ export default function ImageArea({ onOpenViewer }) {
 
   return (
     <section className="content">
-      <div className={`actionbar ${selectedIds.length === 0 ? 'no-sel' : ''}`}>
-        {/* 常驻操作条：无选中时整排置灰，遮挡符号仍然可用 */}
+      <div className={`actionbar ${targetIds.length === 0 ? 'no-sel' : ''}`}>
+        {/* 常驻操作条：没有选中也没有悬停目标时整排置灰，遮挡符号仍然可用 */}
         <span className={`ab-disabled-wrap`}>
           <Hearts
             value={heartVal}
             className="ab-hearts"
             onChange={(n) => {
-              if (!selectedIds.length) return;
+              if (!targetIds.length) return;
               setHeartVal(n);
-              actions.setMarks(selectedIds, { heart: n });
+              actions.setMarks(targetIds, { heart: n });
             }}
           />
 
           <button
             className={`ab-btn ${allRejected ? 'warn' : ''}`}
             title="点一下标废，再点一下取消废"
-            onClick={() => selectedIds.length && actions.setMarks(selectedIds, { rejected: allRejected ? 0 : 1 })}
+            onClick={() => targetIds.length && actions.setMarks(targetIds, { rejected: allRejected ? 0 : 1 })}
           >{allRejected ? '取消废' : '标废'}</button>
 
           <span className="ab-group">
@@ -245,19 +256,19 @@ export default function ImageArea({ onOpenViewer }) {
                 key={lv}
                 className="ab-btn tiny"
                 title={`Alt+${lv + 1}`}
-                onClick={() => selectedIds.length && actions.setAge(selectedIds, lv)}
+                onClick={() => targetIds.length && actions.setAge(targetIds, lv)}
               >L{lv}</button>
             ))}
-            <button className="ab-btn tiny broom" title="清除分级（🧹）" onClick={() => selectedIds.length && actions.setAge(selectedIds, null)}>🧹</button>
+            <button className="ab-btn tiny broom" title="清除分级（🧹）" onClick={() => targetIds.length && actions.setAge(targetIds, null)}>🧹</button>
           </span>
 
           <button
             className="ab-btn danger icon-only"
             title="删除（移入系统回收站，12h 可撤回）"
             onClick={() => {
-              if (!selectedIds.length) return;
-              if (confirm(`把 ${selectedIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
-                actions.trash(selectedIds);
+              if (!targetIds.length) return;
+              if (confirm(`把 ${targetIds.length} 张移入系统回收站？12 小时内可撤回。`)) {
+                actions.trash(targetIds);
               }
             }}
           ><Icon name="trash" size={13} /></button>
@@ -281,7 +292,7 @@ export default function ImageArea({ onOpenViewer }) {
           )}
         </span>
 
-        {selectedIds.length > 0 && <span className="ab-count">已选 {selectedIds.length} 张</span>}
+        {selection.size > 0 && <span className="ab-count">已选 {selection.size} 张</span>}
 
         <span className="ab-right">
           {scanning && scanProgress && (
@@ -301,6 +312,8 @@ export default function ImageArea({ onOpenViewer }) {
                   key={item.id}
                   item={item}
                   selected={selection.has(item.id)}
+                  hovered={hoverEdit && hoverId === item.id}
+                  onHover={setHoverId}
                   onClick={clickItem}
                   onDouble={() => onOpenViewer(item)}
                   onContext={(it, e) => {

@@ -8,7 +8,7 @@ export function useActions({
   libraryId, run, say,
   setItems, setSelection, setLibraries, setLibraryId,
   setScanning, setScanProgress, setTagging, setRevealed,
-  setPendingNew, setVersion,
+  refreshList,
 }) {
   return useMemo(() => ({
     /** 添加文件夹：系统目录选择框 → 注册（同路径幂等）→ 自动扫描 */
@@ -40,11 +40,12 @@ export function useActions({
       if (summary) {
         say(`扫描完成：${summary.total} 张，新增 ${summary.inserted}，耗时 ${(summary.elapsedMs / 1000).toFixed(1)}s`);
       }
+      // 扫完立刻重载列表：新图直接出现，当前浏览位置由栅格锚定不变
+      await refreshList();
     },
-    /** 显式刷新列表（唯一会重新排序的入口，除改排序/切目录外） */
+    /** 显式刷新列表（默认排序下只把新图插到最前，不重排、不跳位置） */
     refresh() {
-      setPendingNew(0);
-      setVersion((v) => v + 1);
+      refreshList();
     },
     /** 切换图库（多图库入口） */
     switchLibrary(id) {
@@ -125,5 +126,5 @@ export function useActions({
       await run(window.aiyview.tag.stop(), '停止打标');
     },
   }), [libraryId, run, say, setItems, setSelection, setLibraries, setLibraryId,
-    setScanning, setScanProgress, setTagging, setRevealed, setPendingNew, setVersion]);
+    setScanning, setScanProgress, setTagging, setRevealed, refreshList]);
 }
