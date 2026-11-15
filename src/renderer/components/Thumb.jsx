@@ -88,7 +88,6 @@ export default function Thumb({ item, selected, hovered, onHover, onClick, onCon
       style={groupCount > 1 ? { '--g': groupHue } : undefined}
       onClick={(e) => onClick(item, e)}
       onMouseEnter={() => onHover?.(item.id)}
-      onMouseLeave={() => onHover?.((cur) => (cur === item.id ? null : cur))}
       onDoubleClick={() => onDouble?.(item)}
       onContextMenu={(e) => onContext?.(item, e)}
       title={item.file_name}

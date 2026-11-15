@@ -171,11 +171,12 @@ export default function ImageArea({ onOpenViewer }) {
   const buckets = useMemo(() => buildBuckets(items, columns, sort), [items, columns, sort]);
 
   const selectedIds = useMemo(() => [...selection], [selection]);
-  /** 悬停即编辑：没选中任何图时，操作条/快捷键作用在鼠标停留的那张上 */
-  const targetIds = useMemo(
-    () => (selectedIds.length > 0 ? selectedIds : (hoverEdit && hoverId != null ? [hoverId] : [])),
-    [selectedIds, hoverEdit, hoverId]
-  );
+  /** 悬停即编辑：鼠标停在哪张就作用在哪张；多选时鼠标停在选中集里则批量生效 */
+  const targetIds = useMemo(() => {
+    const hovered = hoverEdit && hoverId != null && items.some((it) => it.id === hoverId);
+    if (hovered && !(selection.size > 1 && selection.has(hoverId))) return [hoverId];
+    return selectedIds;
+  }, [selectedIds, hoverEdit, hoverId, items, selection]);
 
   /* 目标变了（换选中或换悬停图）→ 心数跟着这张图的实际值走 */
   const targetItem = useMemo(() => (targetIds.length ? items.find((it) => it.id === targetIds[0]) || null : null), [targetIds, items]);
@@ -247,8 +248,9 @@ export default function ImageArea({ onOpenViewer }) {
     );
   }
 
+  /* 鼠标离开整个内容区才清掉悬停目标：挪到操作条上点心时仍算这张 */
   return (
-    <section className="content">
+    <section className="content" onMouseLeave={() => setHoverId(null)}>
       <div className={`actionbar ${targetIds.length === 0 ? 'no-sel' : ''} ${heartOnly ? 'filter-mode' : ''}`}>
         {/* 常驻操作条：没有选中也没有悬停目标时整排置灰，遮挡符号仍然可用 */}
         {/* 收藏视图下这一排心就是筛选器：点第 N 颗只看 N 颗心，再点一次回到全部收藏 */}
