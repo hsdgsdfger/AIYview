@@ -15,7 +15,7 @@ export default function App() {
 }
 
 function Shell() {
-  const { items, status } = useStore();
+  const { items, status, occlusion, revealed } = useStore();
   const [viewerId, setViewerId] = useState(null);
 
   const viewerItem = useMemo(
@@ -23,14 +23,30 @@ function Shell() {
     [items, viewerId]
   );
 
+  /** 是否处在「评级屏蔽」状态：达到阈值且没被临时显示过 */
+  const isMasked = useCallback(
+    (it) =>
+      it.ageLevel != null
+      && occlusion.threshold != null
+      && it.ageLevel >= occlusion.threshold
+      && !revealed.has(it.id),
+    [occlusion.threshold, revealed]
+  );
+
   const nav = useCallback(
     (delta) => {
       if (viewerId == null) return;
       const pos = items.findIndex((it) => it.id === viewerId);
-      const next = items[pos + delta];
-      if (next) setViewerId(next.id);
+      if (pos < 0) return;
+      // 大图翻页跟着评级屏蔽走：被屏蔽的整张跳过，直接落到下一个没被屏蔽的
+      for (let i = pos + delta; i >= 0 && i < items.length; i += delta) {
+        if (!isMasked(items[i])) {
+          setViewerId(items[i].id);
+          return;
+        }
+      }
     },
-    [items, viewerId]
+    [items, viewerId, isMasked]
   );
 
   return (
