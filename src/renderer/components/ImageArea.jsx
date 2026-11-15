@@ -165,8 +165,9 @@ export default function ImageArea({ onOpenViewer }) {
     [selectedIds, hoverEdit, hoverId]
   );
 
-  /* 目标变了（换选中或换悬停图）→ 心数清零 */
-  useEffect(() => { setHeartVal(0); }, [targetIds]);
+  /* 目标变了（换选中或换悬停图）→ 心数跟着这张图的实际值走 */
+  const targetItem = useMemo(() => (targetIds.length ? items.find((it) => it.id === targetIds[0]) || null : null), [targetIds, items]);
+  useEffect(() => { setHeartVal(targetItem ? Number(targetItem.heart) || 0 : 0); }, [targetItem]);
 
   const allRejected = useMemo(() => {
     if (targetIds.length === 0) return false;
@@ -277,7 +278,15 @@ export default function ImageArea({ onOpenViewer }) {
         {/* 遮挡二级菜单符号（全局设置，无选中也可用） */}
         <OcclusionMenu occlusion={occlusion} setOcclusion={setOcclusionWithReset} />
 
-        {/* 文件名搜索：常驻，容器宽度不够时靠 flex 收窄 */}
+        {/* 搜索框放最右边；「已选 N 张」移到左下角 */}
+        <span className="ab-right">
+          {scanning && scanProgress && (
+            <span className="ab-scan">
+              {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
+            </span>
+          )}
+        </span>
+
         <span className="ab-search">
           <Icon name="search" size={13} className="ab-search-ico" />
           <input
@@ -289,16 +298,6 @@ export default function ImageArea({ onOpenViewer }) {
           />
           {nameInput && (
             <button className="ab-search-clear" title="清空搜索" onClick={() => onNameChange('')}>×</button>
-          )}
-        </span>
-
-        {selection.size > 0 && <span className="ab-count">已选 {selection.size} 张</span>}
-
-        <span className="ab-right">
-          {scanning && scanProgress && (
-            <span className="ab-scan">
-              {scanProgress.phase === 'walk' ? '扫描目录…' : `入库 ${scanProgress.done}/${scanProgress.total}`}
-            </span>
           )}
         </span>
       </div>

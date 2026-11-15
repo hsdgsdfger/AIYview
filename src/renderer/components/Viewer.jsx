@@ -80,6 +80,12 @@ export default function Viewer({ item, onClose, onNav }) {
 
   return (
     <div className="viewer" onClick={(e) => e.target === e.currentTarget && onClose()}>
+      {/* 左右两条翻页栏，各占视图 1/8；上半=上一张，下半=下一张 */}
+      <div className="viewer-nav">
+        <button className="vn-half" title="上一张（↑ / ←）" onClick={() => onNav(-1)}>▲</button>
+        <button className="vn-half" title="下一张（↓ / →）" onClick={() => onNav(1)}>▼</button>
+      </div>
+
       <div className="viewer-stage" onWheel={onWheel} onMouseMove={onDrag}>
         {url ? (
           <img
@@ -91,6 +97,11 @@ export default function Viewer({ item, onClose, onNav }) {
         ) : (
           <div className="thumb-placeholder" style={{ width: 320, height: 320 }}><span className="spin" /></div>
         )}
+      </div>
+
+      <div className="viewer-nav">
+        <button className="vn-half" title="上一张（↑ / ←）" onClick={() => onNav(-1)}>▲</button>
+        <button className="vn-half" title="下一张（↓ / →）" onClick={() => onNav(1)}>▼</button>
       </div>
 
       <div className="viewer-side">

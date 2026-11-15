@@ -4,7 +4,7 @@ import Icon from './Icon.jsx';
 /** 顶栏：品牌 + 添加文件夹 + 布局/面板 + 设置 + 窗口控制（对应原版 AIYview 头部） */
 export default function TopBar() {
   const {
-    columns, setColumns, scanning, actions, maximized, say, pendingNew, total,
+    actions, maximized, say, pendingNew, total, scanning,
   } = useStore();
 
   return (
@@ -20,12 +20,6 @@ export default function TopBar() {
       </button>
 
       <div className="topbar-center">
-        <span className="tb-label sr-only" title="Ctrl+滚轮缩放列数">列数</span>
-        <div className="stepper">
-          <button className="stepper-btn" onClick={() => setColumns(Math.max(1, columns - 1))} title="减少分栏">−</button>
-          <span className="stepper-val">{columns}</span>
-          <button className="stepper-btn" onClick={() => setColumns(Math.min(30, columns + 1))} title="增加分栏">+</button>
-        </div>
         {total > 0 && <span className="tb-total" title="当前筛选下的图片总数">共 {total} 张</span>}
       </div>
 

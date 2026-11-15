@@ -69,7 +69,7 @@ export default function BottomBar() {
 
       <footer className="statusbar">
         <div className="sb-left">
-          <span className="sb-muted">{status || (selection.size > 0 ? '' : '未选择')}</span>
+          <span className="sb-muted">{status || (selection.size > 0 ? `已选 ${selection.size} 张` : '未选择')}</span>
         </div>
 
         <div className="sb-right">
