@@ -46,7 +46,7 @@ git config --global user.email "you@example.com"
 
 ## 2. 建仓库并推送
 
-工作目录：`D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app`
+工作目录：`<本地仓库根目录>`
 
 ### 方案 A：网页上建 + 本地推（最稳）
 
@@ -57,7 +57,7 @@ git config --global user.email "you@example.com"
 2. 本地执行：
 
 ```bash
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 
 git remote add origin https://github.com/xianwan/AIYview.git
 git branch -M master
@@ -71,7 +71,7 @@ GitHub → Settings → Developer settings → Personal access tokens → Fine-g
 
 ```bash
 gh auth login
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 gh repo create AIYview --public --source=. --remote=origin --push
 ```
 
@@ -93,7 +93,7 @@ git push -u origin master --force
 本机跑 `electron-builder` 会挂在 packaging 阶段（CPU 归零），所以**安装包一定交给 CI 出**。
 
 ```bash
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 git tag v0.1
 git push origin v0.1
 ```
@@ -120,7 +120,7 @@ git push origin v0.1
 安装包是 `scripts/installer.nsi` 编出来的，想重新生成（需要 `makensis.exe`，NSIS 3.x）：
 
 ```powershell
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 & "<makensis 路径>\makensis.exe" /V2 /DAPP_VERSION=0.1.0 `
   "/DSRC=$((Resolve-Path 'release\v3.0\win-unpacked').Path)" `
   "/DOUT=$((Get-Location).Path)\AIYview-Setup-0.1.0-x64.exe" `
@@ -161,7 +161,7 @@ AIYview v0.1（首个版本）
 ## 5. 发布前必查清单（已逐条验证过，发版前可以再跑一遍）
 
 ```powershell
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 
 npm run lint            # 必须 0 报错
 npm test                # 必须 156/156
@@ -174,7 +174,7 @@ git check-ignore -v tmp\index.sqlite.bak-*   # 应输出 .gitignore:/tmp/
 - [ ] 仓库里没有 `index.sqlite` / `thumbnails` / `logs` / `app.asar.prev`
 - [ ] 仓库里没有 `models/` 或 `*.onnx`（467MB 的模型不进仓库，放 Release 附件或让用户自己下）
 - [ ] `package.json` 里 `name=aiyview`、`appId=com.aiyview.app`、`productName=AIYview`
-- [ ] 没有把 `D:\Apps\99_Data\...` 这类个人路径写进源码或文档
+- [ ] 没有把 `<本地仓库根目录>\...` 这类个人路径写进源码或文档
 - [ ] 决定仓库可见性（Public 后历史 commit 的作者名/邮箱都公开）
 
 ---
@@ -198,7 +198,7 @@ CI 用的是 `electron-builder`，它会自己 rebuild 原生模块；本地 `np
 ## 7. 后续日常发布流程（改完代码之后）
 
 ```bash
-cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
+cd /d <本地仓库根目录>
 
 npm run build:renderer   # 改的是渲染层时
 npm run repack           # 重打 app.asar（原地覆盖 release\v3.0\win-unpacked）
