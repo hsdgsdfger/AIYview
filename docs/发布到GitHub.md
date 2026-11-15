@@ -2,7 +2,7 @@
 
 这份文档是给「已经改好代码、只差发布」的状态准备的。按顺序做，每一步都写了可以直接复制粘贴的命令。
 
-> **当前状态（2026-11-15 已发布）**：本地 `origin` 指向 `https://github.com/hsdgsdfger/AIYview`，本地分支已改名 `main` 并跟踪 `origin/main`，日常迭代直接 `git push`。`v3.0` 已打 tag 并发布 Release，附件是 `AIYview-Setup-0.1.0-x64.exe`（116 MB）和 `AIYview-0.1.0-portable-win-x64.zip`（163 MB）。如果 `git push` 报 `Connection was reset` / `Failed to connect to github.com:443`（GitHub 域名被间歇性阻断，`api.github.com` 却正常），跑 `powershell -File scripts\gh-push.ps1`，它会把连接钉到几个可用 IP 上轮流重试。下面第 1–4 节属于「从零再发一遍」的流程。
+> **当前状态（2026-11-15 已发布）**：本地 `origin` 指向 `https://github.com/hsdgsdfger/AIYview`，本地分支已改名 `main` 并跟踪 `origin/main`，日常迭代直接 `git push`。`v0.1` 已打 tag 并发布 Release，附件是 `AIYview-Setup-0.1.0-x64.exe`（116 MB）和 `AIYview-0.1.0-portable-win-x64.zip`（163 MB）。如果 `git push` 报 `Connection was reset` / `Failed to connect to github.com:443`（GitHub 域名被间歇性阻断，`api.github.com` 却正常），跑 `powershell -File scripts\gh-push.ps1`，它会把连接钉到几个可用 IP 上轮流重试。下面第 1–4 节属于「从零再发一遍」的流程。
 
 ---
 
@@ -94,8 +94,8 @@ git push -u origin master --force
 
 ```bash
 cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
-git tag v3.0
-git push origin v3.0
+git tag v0.1
+git push origin v0.1
 ```
 
 推送 tag 后：
@@ -135,12 +135,12 @@ cd /d D:\Apps\99_Data\workbubby_Data\ComfyUI生图查看器\app
 Compress-Archive -Path "release\v3.0\win-unpacked\*" -DestinationPath "AIYview-0.1.0-portable-win-x64.zip" -CompressionLevel Optimal
 ```
 
-网页操作：仓库 → Releases → Draft a new release → Tag `v3.0`、Title `AIYview v3.0` → 把这两个文件拖进 “Attach binaries”。
+网页操作：仓库 → Releases → Draft a new release → Tag `v0.1`、Title `AIYview v0.1` → 把这两个文件拖进 “Attach binaries”。
 
 Release 说明可以直接写这几条：
 
 ```
-AIYview v3.0（首个公开版）
+AIYview v0.1（首个版本）
 
 - 瀑布流浏览（1–30 列，Ctrl+滚轮调节），缩略图本地缓存
 - 记忆上次状态：列数 / 筛选 / 已加载深度 / 滚动位置
