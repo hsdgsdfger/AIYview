@@ -970,8 +970,39 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 }
 .bp-textarea:focus { border-color: var(--accent); }
 .bp-actions { display: flex; gap: 8px; padding: 6px 0; }
-/* 查看器左右翻页栏：各占视图 1/8，上半=上一张，下半=下一张 */
-.viewer-nav { flex: 0 0 12.5vw; display: flex; flex-direction: column; }.vn-half { flex: 1; border: 0; background: transparent; color: rgba(255,255,255,.45); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; }.vn-half:hover { background: rgba(255,255,255,.07); color: #fff; }
+/* 查看器左右翻页热区：整条边都能点，宽度约为视图的 1/24（原栏的三分之一） */
+.viewer-nav {
+  flex: 0 0 4.2vw;
+  min-width: 40px;
+  max-width: 72px;
+  align-self: stretch;
+  padding: 0;
+  border: 0;
+  background: transparent;
+  cursor: pointer;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+/* 只有中间一个小方框箭头，鼠标进到这条边才显形 */
+.vn-arrow {
+  display: grid;
+  place-items: center;
+  width: 30px;
+  height: 30px;
+  border: 1px solid rgba(255, 255, 255, 0.28);
+  border-radius: 7px;
+  background: rgba(18, 20, 26, 0.55);
+  color: rgba(255, 255, 255, 0.72);
+  font-size: 15px;
+  line-height: 1;
+  opacity: 0;
+  pointer-events: none;
+  transition: opacity 0.16s ease, background 0.15s, color 0.15s, border-color 0.15s;
+}
+.viewer-nav:hover .vn-arrow,
+.viewer-nav:focus-visible .vn-arrow { opacity: 1; color: #fff; border-color: rgba(255, 255, 255, 0.5); }
+.viewer-nav:hover .vn-arrow { background: rgba(40, 44, 54, 0.75); }
 
 /* 顶栏太极图标（点它收起/展开侧边栏） */
 .brand-mark {
@@ -1022,9 +1053,6 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .side-head-title { display: inline-flex; align-items: center; gap: 5px; }
 
 /* 查看器左右翻页栏：默认隐藏，鼠标进入该条区域才显形（整条仍可点） */
-.vn-half { opacity: 0; transition: opacity .18s ease, background .15s, color .15s; }
-.viewer-nav:hover .vn-half { opacity: 1; }
-.vn-half:focus-visible { opacity: 1; }
 
 /* 分组标题：左侧是可折叠的标题按钮，右侧是独立的小图标按钮 */
 .side-head-toggle {

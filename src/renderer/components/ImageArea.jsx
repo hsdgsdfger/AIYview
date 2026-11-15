@@ -230,7 +230,6 @@ export default function ImageArea({ onOpenViewer }) {
       <section className="content">
         <div className="empty-hint">
           <Icon name="folder-plus" size={34} />
-          <p>还没有图库。点左栏「文件夹」右边的 ＋ 图标选一个目录（如 D:\ImageTags\output），会自动扫描入库。</p>
         </div>
       </section>
     );

@@ -80,11 +80,10 @@ export default function Viewer({ item, onClose, onNav }) {
 
   return (
     <div className="viewer" onClick={(e) => e.target === e.currentTarget && onClose()}>
-      {/* 左右两条翻页栏，各占视图 1/8；上半=上一张，下半=下一张 */}
-      <div className="viewer-nav">
-        <button className="vn-half" title="上一张（↑ / ←）" onClick={() => onNav(-1)}>▲</button>
-        <button className="vn-half" title="下一张（↓ / →）" onClick={() => onNav(1)}>▼</button>
-      </div>
+      {/* 左右两条翻页热区：整条边（约占视图 1/24 宽）都能点，中间一个小方框箭头提示 */}
+      <button className="viewer-nav" title="上一张（↑ / ←）" onClick={() => onNav(-1)}>
+        <span className="vn-arrow">‹</span>
+      </button>
 
       <div className="viewer-stage" onWheel={onWheel} onMouseMove={onDrag}>
         {url ? (
@@ -99,10 +98,9 @@ export default function Viewer({ item, onClose, onNav }) {
         )}
       </div>
 
-      <div className="viewer-nav">
-        <button className="vn-half" title="上一张（↑ / ←）" onClick={() => onNav(-1)}>▲</button>
-        <button className="vn-half" title="下一张（↓ / →）" onClick={() => onNav(1)}>▼</button>
-      </div>
+      <button className="viewer-nav" title="下一张（↓ / →）" onClick={() => onNav(1)}>
+        <span className="vn-arrow">›</span>
+      </button>
 
       <div className="viewer-side" style={{ width: promptWidth, flex: `0 0 ${promptWidth}px` }}>
         <div className="viewer-head">
