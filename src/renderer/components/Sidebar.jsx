@@ -224,6 +224,7 @@ export default function Sidebar() {
             <span className="side-text">收藏图片</span>
           </button>
 
+
           <button
             className={`side-item ${rejectedOnly ? 'active' : ''}`}
             onClick={() => {

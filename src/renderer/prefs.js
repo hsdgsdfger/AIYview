@@ -25,6 +25,7 @@ export function viewPayload(s, scrollTop) {
   return {
     columns: s.columns,
     heartOnly: s.heartOnly,
+    heartEq: s.heartEq ?? null,
     untagged: s.untagged,
     rejectedOnly: s.rejectedOnly,
     ageMax: s.ageMax,

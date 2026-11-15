@@ -5,6 +5,7 @@ export function filtersOf(s) {
   return {
     folder: s.folder || null,
     heartMin: s.heartOnly ? 1 : null,
+    heartEq: s.heartOnly && s.heartEq ? s.heartEq : null,
     untaggedOnly: s.untagged,
     rejectedOnly: s.rejectedOnly,
     ageMax: s.ageMax,

@@ -3,7 +3,6 @@ import { DEFAULT_SHORTCUTS } from './shortcuts.js';
 import { loadPrefs, viewPayload } from './prefs.js';
 import { useActions } from './useActions.js';
 import { filtersOf } from './filters.js';
-
 /**
  * 全局状态：库 / 目录 / 分页 / 选中 / 视图 / 筛选 / 标签栏。
  * 数据纪律：渲染层永不持有全量数组，一切靠游标分页增量追加。
@@ -25,6 +24,7 @@ export function StoreProvider({ children }) {
   const [columns, setColumns] = useState(4);          // 面板数
   const [sort, setSortState] = useState('mtime_desc');
   const [heartOnly, setHeartOnly] = useState(false);  // 收藏图片
+  const [heartEq, setHeartEq] = useState(null);        // 收藏里精确心数（1–5，null=全部收藏）
   const [untagged, setUntagged] = useState(false);    // 无标签
   const [rejectedOnly, setRejectedOnly] = useState(false); // 只看废标
   const [ageMax, setAgeMax] = useState(null);         // 分级阈值
@@ -57,7 +57,7 @@ export function StoreProvider({ children }) {
   const stateRef = useRef({});
   stateRef.current = {
     libraryId, folder, cursor, loading, hasMore, sort,
-    heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId,
+    heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId,
     columns, items,
   };
 
@@ -145,6 +145,7 @@ export function StoreProvider({ children }) {
       if (v) {
         if (Number(v.columns) >= 1 && Number(v.columns) <= 30) setColumns(Number(v.columns));
         setHeartOnly(!!v.heartOnly);
+        setHeartEq(Number.isInteger(v.heartEq) && v.heartEq >= 1 && v.heartEq <= 5 ? v.heartEq : null);
         setUntagged(!!v.untagged);
         setRejectedOnly(!!v.rejectedOnly);
         setAgeMax(v.ageMax ?? null);
@@ -164,7 +165,7 @@ export function StoreProvider({ children }) {
   /* 列数 / 筛选 / 已加载数量变化 → 记住 */
   useEffect(() => {
     persistView();
-  }, [columns, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, items.length, persistView]);
+  }, [columns, heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike, items.length, persistView]);
 
   /* 初始库列表 */
   useEffect(() => {
@@ -253,7 +254,7 @@ export function StoreProvider({ children }) {
     setCursor(null);
     setHasMore(true);
     setSelection(new Set());
-  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version]);
+  }, [libraryId, folder, sort, heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version]);
 
   const loadMore = useCallback(async () => {
     const s = stateRef.current;
@@ -291,7 +292,7 @@ export function StoreProvider({ children }) {
   /* 筛选变化 → 重新计数 */
   useEffect(() => {
     refreshCount();
-  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version, refreshCount]);
+  }, [libraryId, folder, sort, heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, collectionId, version, refreshCount]);
 
   /* 打标状态：重开窗口时若后台还在跑，进度条要接回来（tag:status 原先没人调） */
   useEffect(() => {
@@ -357,7 +358,7 @@ export function StoreProvider({ children }) {
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, collectionId, collections, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
     total, pendingNew, hoverEdit, setHoverEdit,
     promptWidth,
@@ -367,7 +368,7 @@ export function StoreProvider({ children }) {
     },
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
-    setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
+    setHeartOnly, setHeartEq, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
     setCollectionId, refreshCollections,
     refreshTags, refreshCount,
     setOcclusionWithReset: (next) => {
@@ -380,7 +381,7 @@ export function StoreProvider({ children }) {
     restore, rememberScroll,
     loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, heartEq, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, collectionId, collections, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
     total, pendingNew, refreshTags, refreshCount, refreshCollections,
     hoverEdit, setHoverEdit,

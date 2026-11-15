@@ -143,7 +143,11 @@ function buildFilters(filters = {}) {
     where.push("rel_path LIKE @folderPrefix || '/%'");
     params.folderPrefix = filters.folder;
   }
-  if (filters.heartMin !== undefined && filters.heartMin !== null) {
+  if (filters.heartEq !== undefined && filters.heartEq !== null) {
+    // 精确心数：点几颗心就只看几颗心的图
+    where.push('heart = @heartEq');
+    params.heartEq = filters.heartEq;
+  } else if (filters.heartMin !== undefined && filters.heartMin !== null) {
     where.push('heart >= @heartMin');
     params.heartMin = filters.heartMin;
   }

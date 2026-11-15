@@ -21,6 +21,7 @@ export default function ImageArea({ onOpenViewer }) {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
     restore, rememberScroll, total, nameLike, setNameLike, hoverEdit, sort,
+    heartOnly, heartEq, setHeartEq,
     collections, say,
   } = useStore();
   const scrollRef = useRef(null);
@@ -250,11 +251,18 @@ export default function ImageArea({ onOpenViewer }) {
     <section className="content">
       <div className={`actionbar ${targetIds.length === 0 ? 'no-sel' : ''}`}>
         {/* 常驻操作条：没有选中也没有悬停目标时整排置灰，遮挡符号仍然可用 */}
-        <span className={`ab-disabled-wrap`}>
+        {/* 收藏视图下这一排心就是筛选器：点第 N 颗只看 N 颗心，再点一次回到全部收藏 */}
+        <span className="ab-disabled-wrap">
           <Hearts
-            value={heartVal}
+            value={heartOnly ? (heartEq || 0) : heartVal}
             className="ab-hearts"
+            filterMode={heartOnly}
+            title={heartOnly ? '点第 N 颗心 = 只看 N 颗心；再点一次回到全部收藏' : '给当前图打心（1–5）'}
             onChange={(n) => {
+              if (heartOnly) {
+                setHeartEq(heartEq === n ? null : n);
+                return;
+              }
               if (!targetIds.length) return;
               setHeartVal(n);
               actions.setMarks(targetIds, { heart: n });
