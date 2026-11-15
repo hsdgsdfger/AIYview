@@ -2,12 +2,12 @@ import Thumb from './Thumb.jsx';
 
 /**
  * 瀑布流上的两个浮层：
- * - CtxMenu：右键菜单（打开大图 / 找相似 / 加收藏夹 / 导出侧车 / 打标 / 删除）
+ * - CtxMenu：右键菜单（打开大图 / 找相似 / 导出侧车 / 打标 / 删除）
  * - SimilarPanel：相似图结果面板（缩略图 + 指纹距离）
  */
 export function CtxMenu({
   menu, onClose, onOpenViewer, onFindSimilar, hashProg,
-  collections, selection, libraryId, actions, say,
+  libraryId, actions, say,
 }) {
   if (!menu) return null;
   const item = menu.item;
@@ -21,22 +21,6 @@ export function CtxMenu({
       <button onClick={() => onFindSimilar(item)}>
         找相似图{hashProg && hashProg.total ? `（指纹 ${hashProg.done}/${hashProg.total}）` : ''}
       </button>
-      {collections.length > 0 && (
-        <>
-          <div className="ctx-sep" />
-          {collections.map((c) => (
-            <button
-              key={c.id}
-              onClick={async () => {
-                const ids = selection.has(item.id) ? [...selection] : [item.id];
-                const r = await window.aiyview.collection.add({ collectionId: c.id, ids, libraryId });
-                onClose();
-                say(r && r.ok ? `已加入「${c.name}」${ids.length} 张` : (r && r.error) || '加入失败');
-              }}
-            >加入收藏夹「{c.name}」{selection.has(item.id) && selection.size > 1 ? `（${selection.size} 张）` : ''}</button>
-          ))}
-        </>
-      )}
       <div className="ctx-sep" />
       <button
         onClick={async () => {

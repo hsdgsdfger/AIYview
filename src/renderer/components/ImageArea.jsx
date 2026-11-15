@@ -22,7 +22,7 @@ export default function ImageArea({ onOpenViewer }) {
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
     restore, rememberScroll, total, nameLike, setNameLike, hoverEdit, sort,
     heartOnly, heartEq, setHeartEq,
-    collections, say,
+    say,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
@@ -249,7 +249,7 @@ export default function ImageArea({ onOpenViewer }) {
 
   return (
     <section className="content">
-      <div className={`actionbar ${targetIds.length === 0 ? 'no-sel' : ''}`}>
+      <div className={`actionbar ${targetIds.length === 0 ? 'no-sel' : ''} ${heartOnly ? 'filter-mode' : ''}`}>
         {/* 常驻操作条：没有选中也没有悬停目标时整排置灰，遮挡符号仍然可用 */}
         {/* 收藏视图下这一排心就是筛选器：点第 N 颗只看 N 颗心，再点一次回到全部收藏 */}
         <span className="ab-disabled-wrap">
@@ -358,8 +358,6 @@ export default function ImageArea({ onOpenViewer }) {
           onOpenViewer={onOpenViewer}
           onFindSimilar={findSimilar}
           hashProg={hashProg}
-          collections={collections}
-          selection={selection}
           libraryId={libraryId}
           actions={actions}
           say={say}
