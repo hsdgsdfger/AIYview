@@ -11,7 +11,7 @@ import Icon from './Icon.jsx';
  * 设置里收：最近删除、标签、提示词库、批量重命名、标签字典、缩略图缓存、界面缩放、快捷键、日志、主题。
  */
 export default function BottomBar() {
-  const { selection, actions, tagging, status, say, hoverEdit, setHoverEdit } = useStore();
+  const { selection, actions, tagging, status, say, hoverEdit, setHoverEdit, total } = useStore();
   const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | 'shortcuts' | 'cache' | 'scale' | 'rename'
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
@@ -70,6 +70,7 @@ export default function BottomBar() {
 
       <footer className="statusbar">
         <div className="sb-left">
+          {total > 0 && <span className="sb-total" title="当前筛选下的图片总数">共 {total} 张</span>}
           <span className="sb-muted">{status || (selection.size > 0 ? `已选 ${selection.size} 张` : '未选择')}</span>
         </div>
 

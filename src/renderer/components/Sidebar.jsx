@@ -89,12 +89,6 @@ export default function Sidebar() {
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} style={{ width, flex: `0 0 ${width}px` }}>
-      {!collapsed && (
-        <div className="sb-top">
-          <span className="sb-top-title">图库</span>
-        </div>
-      )}
-
       {collapsed ? (
         <div className="side-rail">
           <button

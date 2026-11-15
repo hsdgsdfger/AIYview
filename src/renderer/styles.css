@@ -997,3 +997,11 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   accent-color: var(--accent);
   height: 18px;
 }
+
+/* 底栏左侧：总数在「已选 N 张」左边 */
+.sb-total { color: var(--muted); font-variant-numeric: tabular-nums; }
+.sb-total::after {
+  content: "·";
+  margin-left: 8px;
+  color: var(--line);
+}

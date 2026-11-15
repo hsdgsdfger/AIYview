@@ -39,12 +39,11 @@ export default function OcclusionMenu({ occlusion, setOcclusion }) {
     <>
       <button
         ref={btnRef}
-        className={`ab-btn ab-occl ${occlusion.threshold != null ? 'on' : ''}`}
+        className="ab-btn ab-occl"
         title="遮挡：方式 / 阈值 / 排序 / 取消选择"
         onClick={toggle}
       >
         <Icon name={modeIcon} size={14} />
-        <span className="caret">⌄</span>
       </button>
 
       {pos && createPortal(

@@ -267,7 +267,9 @@ export default function ImageArea({ onOpenViewer }) {
                 onClick={() => targetIds.length && actions.setAge(targetIds, lv)}
               >L{lv}</button>
             ))}
-            <button className="ab-btn tiny broom" title="清除分级（🧹）" onClick={() => targetIds.length && actions.setAge(targetIds, null)}>🧹</button>
+            <button className="ab-btn tiny broom" title="清除分级" onClick={() => targetIds.length && actions.setAge(targetIds, null)}>
+              <Icon name="broom" size={13} />
+            </button>
           </span>
 
           <button

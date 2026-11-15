@@ -20,6 +20,8 @@ const PATHS = {
   plus: 'M12 5v14M5 12h14',
   'panel-collapse': 'M5 4v16M15 7l-5 5 5 5',
   'panel-expand': 'M19 4v16M9 7l5 5-5 5',
+  // 单色扫帚（清除分级用），替代原来的彩色 emoji
+  broom: 'M18 3l4 4M21 6l-8 8M13 14l4 4-3 3H7l-3-3 3-3 5-5M9 18v2M12 17v2M15 18v2',
 };
 
 export default function Icon({ name, size = 16, className = '', strokeWidth = 1.6 }) {

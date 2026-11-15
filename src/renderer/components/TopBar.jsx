@@ -5,7 +5,7 @@ import { useStore } from '../store.jsx';
  * 添加文件夹、刷新、主题等都收进底栏设置里；刷新默认 F5。
  */
 export default function TopBar() {
-  const { maximized, total, sidebar, setSidebar, saveSidebar } = useStore();
+  const { maximized, sidebar, setSidebar, saveSidebar } = useStore();
   const collapsed = !!sidebar.collapsed;
 
   const toggle = () => {
@@ -25,9 +25,7 @@ export default function TopBar() {
         <span className="brand-text">AIY<em>view</em></span>
       </div>
 
-      <div className="topbar-center">
-        {total > 0 && <span className="tb-total" title="当前筛选下的图片总数">共 {total} 张</span>}
-      </div>
+      <div className="topbar-center" />
 
       <div className="topbar-right">
         <div className="win-controls">
