@@ -32,6 +32,39 @@ function extOf(fileName) {
 }
 
 /**
+ * 自然排序键：小写 + 数字段左补 8 位。
+ * img_2.png → img_00000002.png，img_10.png → img_00000010.png，于是 2 排在 10 前面。
+ * 数字段超过 8 位的（极少见）保持原样，仍然可比较。
+ */
+const DIGIT_RUN = /\d+/g;
+function naturalKey(relPath) {
+  return String(relPath || '')
+    .normalize('NFC')
+    .toLowerCase()
+    .replace(DIGIT_RUN, (digits) => (digits.length >= 8 ? digits : digits.padStart(8, '0')));
+}
+
+/**
+ * 老库补 sort_key（003 迁移只加了列）：一次全量补齐，之后靠 upsert 维护。
+ * @returns {number} 补了多少行
+ */
+function backfillSortKeys(db, batchSize = 2000) {
+  const select = db.prepare('SELECT id, rel_path FROM images WHERE sort_key IS NULL LIMIT ?');
+  const update = db.prepare('UPDATE images SET sort_key = ? WHERE id = ?');
+  let total = 0;
+  for (;;) {
+    const rows = select.all(batchSize);
+    if (rows.length === 0) break;
+    const run = db.transaction(() => {
+      for (const row of rows) update.run(naturalKey(row.rel_path), row.id);
+    });
+    run();
+    total += rows.length;
+  }
+  return total;
+}
+
+/**
  * 批量 upsert：重复扫描只更新文件事实，保留用户标记（heart/rejected/age）。
  * @param {Array<{name,path,size,mtimeMs,subDir}>} scanned scanFolder 的输出
  * @param {string} root 图库根（用于算 rel_path）
@@ -39,13 +72,14 @@ function extOf(fileName) {
  */
 function upsertScanned(db, libraryId, scanned, root) {
   const upsert = db.prepare(`
-    INSERT INTO images (library_id, rel_path, file_name, ext, size_bytes, mtime_ms)
-    VALUES (@library_id, @rel_path, @file_name, @ext, @size_bytes, @mtime_ms)
+    INSERT INTO images (library_id, rel_path, file_name, ext, size_bytes, mtime_ms, sort_key)
+    VALUES (@library_id, @rel_path, @file_name, @ext, @size_bytes, @mtime_ms, @sort_key)
     ON CONFLICT(library_id, rel_path) DO UPDATE SET
       file_name = excluded.file_name,
       ext       = excluded.ext,
       size_bytes= excluded.size_bytes,
       mtime_ms  = excluded.mtime_ms,
+      sort_key  = excluded.sort_key,
       updated_at= unixepoch() * 1000
   `);
   const selectId = db.prepare('SELECT id FROM images WHERE library_id = ? AND rel_path = ?');
@@ -76,6 +110,7 @@ function upsertScanned(db, libraryId, scanned, root) {
         ext: extOf(item.name),
         size_bytes: item.size || 0,
         mtime_ms: Math.round(item.mtimeMs || 0),
+        sort_key: naturalKey(rel),
       };
     });
     run(rows);
@@ -157,12 +192,13 @@ function listPage(db, q) {
   let orderSql;
   let cursorSql = '';
   if (byName) {
-    orderSql = `ORDER BY rel_path ${desc ? 'DESC' : 'ASC'}, id ${desc ? 'DESC' : 'ASC'}`;
-    if (cursor && cursor.p) {
+    // 自然排序：sort_key 是「数字段补零」的路径键（img_2 排在 img_10 前）
+    orderSql = `ORDER BY sort_key ${desc ? 'DESC' : 'ASC'}, id ${desc ? 'DESC' : 'ASC'}`;
+    if (cursor && cursor.k !== undefined) {
       cursorSql = desc
-        ? 'AND (rel_path < @curP OR (rel_path = @curP AND id < @curId))'
-        : 'AND (rel_path > @curP OR (rel_path = @curP AND id > @curId))';
-      params.curP = cursor.p;
+        ? 'AND (sort_key < @curK OR (sort_key = @curK AND id < @curId))'
+        : 'AND (sort_key > @curK OR (sort_key = @curK AND id > @curId))';
+      params.curK = cursor.k;
       params.curId = cursor.id || 0;
     }
   } else {
@@ -178,7 +214,7 @@ function listPage(db, q) {
 
   const items = db
     .prepare(`SELECT id, rel_path, file_name, ext, size_bytes, mtime_ms, width, height,
-                     heart, rejected, age_level AS ageLevel, age_source AS ageSource
+                     heart, rejected, age_level AS ageLevel, age_source AS ageSource, sort_key
               FROM images ${where} ${cursorSql} ${orderSql} LIMIT @limit`)
     .all({ ...params, limit: limit + 1 });
 
@@ -189,7 +225,7 @@ function listPage(db, q) {
   if (hasMore && items.length > 0) {
     const last = items[items.length - 1];
     nextCursor = byName
-      ? encodeCursor({ p: last.rel_path, id: last.id })
+      ? encodeCursor({ k: last.sort_key, id: last.id })
       : encodeCursor({ m: last.mtime_ms, id: last.id });
   }
 
@@ -301,6 +337,8 @@ module.exports = {
   encodeCursor,
   decodeCursor,
   upsertScanned,
+  naturalKey,
+  backfillSortKeys,
   folderChains,
   listPage,
   countImages,

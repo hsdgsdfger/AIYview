@@ -16,6 +16,24 @@ function registerTagIpc() {
     });
   });
 
+  /** 带文件对话框的导入：界面上「导入标签 CSV」走这条，不需要调用方自己拼路径 */
+  handle('tag:pick-csv', async ({ source } = {}) => {
+    const { dialog, BrowserWindow } = require('electron');
+    const win = BrowserWindow.getFocusedWindow() || BrowserWindow.getAllWindows()[0];
+    const result = await dialog.showOpenDialog(win, {
+      title: '导入标签 CSV',
+      buttonLabel: '导入',
+      filters: [{ name: '标签 CSV', extensions: ['csv'] }],
+      properties: ['openFile'],
+    });
+    if (result.canceled || result.filePaths.length === 0) return { canceled: true };
+    const fsp = require('node:fs/promises');
+    const text = await fsp.readFile(result.filePaths[0], 'utf8');
+    const rows = parseTagCsv(text);
+    const summary = tags.importDictionary(getDb(), rows, { source: source || 'illutag' });
+    return { canceled: false, path: result.filePaths[0], ...summary };
+  });
+
   handle('tag:search', ({ q, limit } = {}) => tags.searchTags(getDb(), q, { limit }));
   handle('tag:suggest', ({ prefix, limit } = {}) => tags.suggest(getDb(), prefix, { limit }));
   handle('tag:of-image', ({ imageId } = {}) => tags.tagsOfImage(getDb(), imageId));

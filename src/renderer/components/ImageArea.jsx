@@ -15,11 +15,37 @@ export default function ImageArea({ onOpenViewer }) {
   const {
     items, columns, setColumns, hasMore, loading, loadMore, selection, actions,
     libraryId, scanning, scanProgress, occlusion, setOcclusionWithReset, shortcuts,
-    restore, rememberScroll,
+    restore, rememberScroll, total, nameLike, setNameLike,
   } = useStore();
   const scrollRef = useRef(null);
   const lastIdxRef = useRef(-1);
   const [heartVal, setHeartVal] = useState(0); // 本次选中后点击的心数（红心显示用）
+  const [nameInput, setNameInput] = useState(nameLike || '');
+  const [menu, setMenu] = useState(null);      // 右键菜单 { x, y, item }
+  const nameTimerRef = useRef(null);
+
+  /* 文件名搜索：输入防抖 300ms 再落到筛选状态（每敲一个字都查库太浪费） */
+  useEffect(() => {
+    setNameInput(nameLike || '');
+  }, [nameLike]);
+
+  const onNameChange = (value) => {
+    setNameInput(value);
+    clearTimeout(nameTimerRef.current);
+    nameTimerRef.current = setTimeout(() => setNameLike(value.trim()), 300);
+  };
+
+  /* 右键菜单：点空白/滚动就关掉 */
+  useEffect(() => {
+    if (!menu) return undefined;
+    const close = () => setMenu(null);
+    window.addEventListener('click', close);
+    window.addEventListener('scroll', close, true);
+    return () => {
+      window.removeEventListener('click', close);
+      window.removeEventListener('scroll', close, true);
+    };
+  }, [menu]);
 
   /* Ctrl + 滚轮 = 缩放瀑布流列数（原生监听才能可靠 preventDefault） */
   const columnsRef = useRef(columns);
@@ -240,6 +266,21 @@ export default function ImageArea({ onOpenViewer }) {
         {/* 遮挡二级菜单符号（全局设置，无选中也可用） */}
         <OcclusionMenu occlusion={occlusion} setOcclusion={setOcclusionWithReset} />
 
+        {/* 文件名搜索：常驻，容器宽度不够时靠 flex 收窄 */}
+        <span className="ab-search">
+          <Icon name="search" size={13} className="ab-search-ico" />
+          <input
+            className="ab-search-input"
+            placeholder="按文件名搜索…"
+            value={nameInput}
+            onChange={(e) => onNameChange(e.target.value)}
+            title="只匹配文件名（不区分大小写），清空即恢复"
+          />
+          {nameInput && (
+            <button className="ab-search-clear" title="清空搜索" onClick={() => onNameChange('')}>×</button>
+          )}
+        </span>
+
         {selectedIds.length > 0 && <span className="ab-count">已选 {selectedIds.length} 张</span>}
 
         <span className="ab-right">
@@ -262,6 +303,10 @@ export default function ImageArea({ onOpenViewer }) {
                   selected={selection.has(item.id)}
                   onClick={clickItem}
                   onDouble={() => onOpenViewer(item)}
+                  onContext={(it, e) => {
+                    e.preventDefault();
+                    setMenu({ x: e.clientX, y: e.clientY, item: it });
+                  }}
                 />
               ))}
             </div>
@@ -269,11 +314,44 @@ export default function ImageArea({ onOpenViewer }) {
         </div>
 
         {loading && <div className="feed-hint">加载中…</div>}
-        {!hasMore && items.length > 0 && <div className="feed-hint">共 {items.length} 张</div>}
+        {!hasMore && items.length > 0 && (
+          <div className="feed-hint">
+            {total > items.length ? `共 ${total} 张 · 已显示 ${items.length}` : `共 ${total || items.length} 张`}
+          </div>
+        )}
+        {hasMore && items.length > 0 && <div className="feed-hint">已显示 {items.length} / {total || '…'} 张</div>}
         {items.length === 0 && !loading && (
           <div className="empty-hint"><p>这里还没有图片，点右上 ⟳ 重新扫描。</p></div>
         )}
       </div>
+
+      {menu && (
+        <div
+          className="ctx-menu"
+          style={{ left: Math.min(menu.x, window.innerWidth - 190), top: Math.min(menu.y, window.innerHeight - 300) }}
+          onClick={(e) => e.stopPropagation()}
+        >
+          <button onClick={() => { onOpenViewer(menu.item); setMenu(null); }}>打开大图</button>
+          <button
+            onClick={() => {
+              actions.setMarks([menu.item.id], { heart: Math.min(5, (menu.item.heart || 0) + 1) });
+              setMenu(null);
+            }}
+          >加一颗心（当前 {(menu.item.heart || 0)}）</button>
+          <button
+            onClick={() => {
+              actions.setMarks([menu.item.id], { rejected: menu.item.rejected === 1 ? 0 : 1 });
+              setMenu(null);
+            }}
+          >{menu.item.rejected === 1 ? '取消废标' : '标为废片'}</button>
+          <div className="ctx-sep" />
+          {[0, 1, 2, 3, 4].map((lv) => (
+            <button key={lv} onClick={() => { actions.setAge([menu.item.id], lv); setMenu(null); }}>分级 L{lv}</button>
+          ))}
+          <div className="ctx-sep" />
+          <button className="danger" onClick={() => { actions.trash([menu.item.id]); setMenu(null); }}>移入回收站</button>
+        </div>
+      )}
     </section>
   );
 }

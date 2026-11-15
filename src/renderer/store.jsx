@@ -1,5 +1,7 @@
 import { createContext, useContext, useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { DEFAULT_SHORTCUTS } from './shortcuts.js';
+import { loadPrefs, viewPayload } from './prefs.js';
+import { useActions } from './useActions.js';
 
 /**
  * 全局状态：库 / 目录 / 分页 / 选中 / 视图 / 筛选 / 标签栏。
@@ -25,6 +27,7 @@ export function StoreProvider({ children }) {
   const [untagged, setUntagged] = useState(false);    // 无标签
   const [rejectedOnly, setRejectedOnly] = useState(false); // 只看废标
   const [ageMax, setAgeMax] = useState(null);         // 分级阈值
+  const [ageOnly, setAgeOnly] = useState(null);       // 精确分级（L0–L4）
   const [nameLike, setNameLike] = useState('');
   const [tagFilter, setTagFilter] = useState(null);   // {id,name}
   const [tagList, setTagList] = useState([]);
@@ -39,13 +42,29 @@ export function StoreProvider({ children }) {
   const [status, setStatus] = useState('');
   const [version, setVersion] = useState(0);
   const [maximized, setMaximized] = useState(false);
+  /** 当前筛选下的真实总数（browse:count），用于「共 N 张」 */
+  const [total, setTotal] = useState(0);
+  /** 后台发现新图但没刷新列表时的提示数（不打断滚动） */
+  const [pendingNew, setPendingNew] = useState(0);
 
   const stateRef = useRef({});
   stateRef.current = {
     libraryId, folder, cursor, loading, hasMore, sort,
-    heartOnly, untagged, rejectedOnly, ageMax, nameLike, tagFilter,
+    heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter,
     columns, items,
   };
+
+  /** 筛选条件（列表与计数共用，避免两处口径漂移） */
+  const filtersOf = useCallback((s) => ({
+    folder: s.folder || null,
+    heartMin: s.heartOnly ? 1 : null,
+    untaggedOnly: s.untagged,
+    rejectedOnly: s.rejectedOnly,
+    ageMax: s.ageMax,
+    ageOnly: s.ageOnly,
+    nameLike: s.nameLike || '',
+    tagId: s.tagFilter ? s.tagFilter.id : null,
+  }), []);
 
   const say = useCallback((text) => {
     setStatus(text);
@@ -60,20 +79,7 @@ export function StoreProvider({ children }) {
     if (!viewBootedRef.current) return;
     clearTimeout(viewTimerRef.current);
     viewTimerRef.current = setTimeout(() => {
-      const s = stateRef.current;
-      window.aiyview.settings.set({
-        key: 'view',
-        value: {
-          columns: s.columns,
-          heartOnly: s.heartOnly,
-          untagged: s.untagged,
-          rejectedOnly: s.rejectedOnly,
-          ageMax: s.ageMax,
-          nameLike: s.nameLike,
-          itemCount: (s.items || []).length,
-          scrollTop: Math.round(scrollTopRef.current || 0),
-        },
-      });
+      window.aiyview.settings.set({ key: 'view', value: viewPayload(stateRef.current, scrollTopRef.current) });
     }, 500);
   }, []);
 
@@ -113,37 +119,24 @@ export function StoreProvider({ children }) {
     return res.data;
   }, [say]);
 
-  /* 主题恢复 + 窗口状态 + 排序恢复 */
+  /* 偏好恢复：主题 + 排序 + 快捷键 + 遮挡 + 侧栏 + 窗口状态 + 瀑布流上次状态 */
   useEffect(() => {
-    window.aiyview.settings.get({ key: 'theme' }).then((r) => {
-      if (r.ok && r.data) document.documentElement.setAttribute('data-theme', r.data);
-    });
-    window.aiyview.settings.get({ key: 'sort' }).then((r) => {
-      if (r.ok && r.data) setSortState(r.data);
-    });
-    window.aiyview.settings.get({ key: 'shortcuts' }).then((r) => {
-      if (r.ok && r.data && typeof r.data === 'object') setShortcuts({ ...DEFAULT_SHORTCUTS, ...r.data });
-    });
-    window.aiyview.settings.get({ key: 'occlusion' }).then((r) => {
-      if (r.ok && r.data && typeof r.data === 'object') {
-        setOcclusion((prev) => ({ ...prev, ...r.data }));
-      }
-    });
-    window.aiyview.settings.get({ key: 'sidebar' }).then((r) => {
-      if (r.ok && r.data && typeof r.data === 'object') {
-        setSidebar((prev) => ({ ...prev, ...r.data }));
-      }
-    });
-    window.aiyview.window.state().then((r) => r.ok && setMaximized(r.data.maximized));
-    /* 瀑布流上次状态：列数 + 筛选 + 加载深度 + 滚动位置 */
-    window.aiyview.settings.get({ key: 'view' }).then((r) => {
-      const v = r.ok && r.data && typeof r.data === 'object' ? r.data : null;
+    loadPrefs().then((p) => {
+      if (p.theme) document.documentElement.setAttribute('data-theme', p.theme);
+      if (p.sort) setSortState(p.sort);
+      if (p.shortcuts && typeof p.shortcuts === 'object') setShortcuts({ ...DEFAULT_SHORTCUTS, ...p.shortcuts });
+      if (p.occlusion && typeof p.occlusion === 'object') setOcclusion((prev) => ({ ...prev, ...p.occlusion }));
+      if (p.sidebar && typeof p.sidebar === 'object') setSidebar((prev) => ({ ...prev, ...p.sidebar }));
+      if (p.win) setMaximized(Boolean(p.win.maximized));
+
+      const v = p.view && typeof p.view === 'object' ? p.view : null;
       if (v) {
         if (Number(v.columns) >= 1 && Number(v.columns) <= 30) setColumns(Number(v.columns));
         setHeartOnly(!!v.heartOnly);
         setUntagged(!!v.untagged);
         setRejectedOnly(!!v.rejectedOnly);
         setAgeMax(v.ageMax ?? null);
+        setAgeOnly(Number.isInteger(v.ageOnly) ? v.ageOnly : null);
         setNameLike(typeof v.nameLike === 'string' ? v.nameLike : '');
         scrollTopRef.current = Number(v.scrollTop) || 0;
         setRestore({
@@ -159,7 +152,7 @@ export function StoreProvider({ children }) {
   /* 列数 / 筛选 / 已加载数量变化 → 记住 */
   useEffect(() => {
     persistView();
-  }, [columns, heartOnly, untagged, rejectedOnly, ageMax, nameLike, items.length, persistView]);
+  }, [columns, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, items.length, persistView]);
 
   /* 初始库列表 */
   useEffect(() => {
@@ -171,19 +164,36 @@ export function StoreProvider({ children }) {
     });
   }, []);
 
-  /* 切库 → 目录树 + 标签栏 */
+  /** 标签栏（打标/加删标签后要刷新，否则计数停在旧值） */
+  const refreshTags = useCallback(async () => {
+    const s = stateRef.current;
+    if (s.libraryId == null) return;
+    const res = await window.aiyview.tag.top({ libraryId: s.libraryId, limit: 40 });
+    if (res.ok) setTagList(res.data);
+  }, []);
+
+  /** 真实总数：browse:count，与列表同一套筛选口径 */
+  const refreshCount = useCallback(async () => {
+    const s = stateRef.current;
+    if (s.libraryId == null) {
+      setTotal(0);
+      return;
+    }
+    const res = await window.aiyview.browse.count({ libraryId: s.libraryId, filters: filtersOf(s) });
+    if (res && res.ok) setTotal(Number(res.data) || 0);
+  }, [filtersOf]);
+
+  /* 切库 → 目录树 + 标签栏；筛选复位 */
   useEffect(() => {
     if (libraryId == null) return;
     window.aiyview.browse.folders({ libraryId }).then((res) => {
       if (res.ok) setFolders(res.data);
     });
-    window.aiyview.tag.top({ libraryId, limit: 40 }).then((res) => {
-      if (res.ok) setTagList(res.data);
-    });
+    refreshTags();
     setFolder('');
     setTagFilter(null);
     setUntagged(false);
-  }, [libraryId, version]);
+  }, [libraryId, version, refreshTags]);
 
   /* 任一筛选变化 → 重置分页 */
   useEffect(() => {
@@ -192,7 +202,7 @@ export function StoreProvider({ children }) {
     setCursor(null);
     setHasMore(true);
     setSelection(new Set());
-  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike, tagFilter, version]);
+  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, version]);
 
   const loadMore = useCallback(async () => {
     const s = stateRef.current;
@@ -204,15 +214,7 @@ export function StoreProvider({ children }) {
         cursor: s.cursor,
         limit: 60,
         sort: s.sort,
-        filters: {
-          folder: s.folder || null,
-          heartMin: s.heartOnly ? 1 : null,
-          untaggedOnly: s.untagged,
-          rejectedOnly: s.rejectedOnly,
-          ageMax: s.ageMax,
-          nameLike: s.nameLike || '',
-          tagId: s.tagFilter ? s.tagFilter.id : null,
-        },
+        filters: filtersOf(s),
       });
       if (!res.ok) {
         say(res.error);
@@ -229,17 +231,40 @@ export function StoreProvider({ children }) {
     } finally {
       setLoading(false);
     }
-  }, [say]);
+  }, [say, filtersOf]);
 
   useEffect(() => {
     if (hasMore && items.length === 0) loadMore();
   }, [hasMore, items.length, loadMore]);
 
+  /* 筛选变化 → 重新计数 */
+  useEffect(() => {
+    refreshCount();
+  }, [libraryId, folder, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike, tagFilter, version, refreshCount]);
+
+  /* 打标状态：重开窗口时若后台还在跑，进度条要接回来（tag:status 原先没人调） */
+  useEffect(() => {
+    window.aiyview.tag.status().then((r) => {
+      if (r.ok && r.data && r.data.running) setTagging(r.data.progress || { done: 0, total: 0 });
+    });
+  }, []);
+
   /* 主进程事件 */
   useEffect(() => {
     const offProgress = window.aiyview.on('scan:progress', (p) => setScanProgress(p));
-    // 扫描/标记等后台变更不再强制刷新列表：排序只在用户主动改排序/切目录时才变
-    const offChanged = window.aiyview.on('browse:changed', () => { /* 保持列表稳定 */ });
+    // 后台扫描/改名发现新图：只更新总数并亮「刷新」提示，绝不重排正在看的列表
+    const offChanged = window.aiyview.on('browse:changed', (p) => {
+      const reason = p && p.reason;
+      if (reason === 'scan' || reason === 'watch' || reason === 'rename') {
+        setPendingNew((n) => n + 1);
+        refreshCount();
+      }
+    });
+    // 打标/加删标签完成后刷新侧栏标签（原先没人订阅，计数一直是旧的）
+    const offTags = window.aiyview.on('tags-updated', () => {
+      refreshTags();
+      refreshCount();
+    });
     const offTag = window.aiyview.on('tag:progress', (p) => {
       if (p && p.finished) return;
       setTagging(p);
@@ -247,122 +272,27 @@ export function StoreProvider({ children }) {
     return () => {
       offProgress();
       offChanged();
+      offTags();
       offTag();
     };
-  }, []);
+  }, [refreshCount, refreshTags]);
 
-  const actions = useMemo(() => ({
-    /** 添加文件夹：系统目录选择框 → 注册（同路径幂等）→ 自动扫描 */
-    async addFolder() {
-      const data = await run(window.aiyview.library.pick(), '添加文件夹');
-      if (!data || data.canceled || !data.libraries || data.libraries.length === 0) return;
-      setLibraries((prev) => {
-        const map = new Map(prev.map((l) => [l.id, l]));
-        for (const lib of data.libraries) map.set(lib.id, lib);
-        return [...map.values()];
-      });
-      const target = data.libraries[data.libraries.length - 1];
-      setLibraryId(target.id);
-      say(`已添加「${target.name}」，开始扫描…`);
-      setScanning(true);
-      const summary = await run(window.aiyview.scan.run({ libraryId: target.id }), '扫描');
-      setScanning(false);
-      setScanProgress(null);
-      if (summary) {
-        say(`扫描完成：${summary.total} 张（新增 ${summary.inserted}，${(summary.elapsedMs / 1000).toFixed(1)}s）`);
-      }
-    },
-    async scanCurrent() {
-      if (libraryId == null) return;
-      setScanning(true);
-      const summary = await run(window.aiyview.scan.run({ libraryId }), '扫描');
-      setScanning(false);
-      setScanProgress(null);
-      if (summary) {
-        say(`扫描完成：${summary.total} 张，新增 ${summary.inserted}，耗时 ${(summary.elapsedMs / 1000).toFixed(1)}s`);
-      }
-    },
-    /** 显式刷新列表（唯一会重新排序的入口，除改排序/切目录外） */
-    refresh() {
-      setVersion((v) => v + 1);
-    },
-    async removeLibrary(id) {
-      await run(window.aiyview.library.remove({ id }), '移除图库');
-      setLibraries((prev) => prev.filter((l) => l.id !== id));
-      setLibraryId((cur) => (cur === id ? null : cur));
-    },
-    async setMarks(ids, patch) {
-      const res = await run(window.aiyview.image.marks({ ids, ...patch }), '标记');
-      if (res) {
-        setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ...patch } : it)));
-        // 任何标记都不重排列表（用户硬要求：只有主动改排序才变）
-      }
-    },
-    async setAge(ids, level) {
-      await run(window.aiyview.image.age({ ids, level, source: 'manual' }), '分级');
-      setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ageLevel: level, ageSource: 'manual' } : it)));
-      // 分级也不重排
-    },
-    async trash(ids) {
-      const res = await run(window.aiyview.delete.trash({ ids }), '删除');
-      if (res) {
-        const gone = new Set(ids);
-        setItems((prev) => prev.filter((it) => !gone.has(it.id)));
-        setSelection(new Set());
-        say(`已移入回收站 ${res.trashed} 张${res.failed.length ? `，失败 ${res.failed.length}` : ''}`);
-      }
-    },
-    toggleSelect(id, additive) {
-      setSelection((prev) => {
-        const next = additive ? new Set(prev) : new Set();
-        if (additive && prev.has(id)) next.delete(id);
-        else next.add(id);
-        return next;
-      });
-    },
-    selectRange(ids, additive) {
-      setSelection((prev) => {
-        const next = additive ? new Set(prev) : new Set();
-        for (const id of ids) next.add(id);
-        return next;
-      });
-    },
-    clearSelection() {
-      setSelection(new Set());
-    },
-    reveal(id) {
-      setRevealed((prev) => new Set(prev).add(id));
-    },
-    /** 点已显示的遮挡图 → 恢复遮挡 */
-    unreveal(id) {
-      setRevealed((prev) => {
-        const next = new Set(prev);
-        next.delete(id);
-        return next;
-      });
-    },
-    async startTagging() {
-      if (libraryId == null) return;
-      setTagging({ done: 0, total: 0 });
-      const r = await run(window.aiyview.tag.run({ libraryId }), '打标');
-      setTagging(null);
-      if (r) {
-        const failed = r.failed ? `，${r.failed} 张失败${r.firstError ? `（${r.firstError}）` : ''}` : '';
-        say(r.cancelled ? `打标中断 ${r.done}/${r.total}（可续跑）` : `打标完成：${r.tagged} 张${failed}`);
-      }
-    },
-    async stopTagging() {
-      await run(window.aiyview.tag.stop(), '停止打标');
-    },
-  }), [libraryId, run, say]);
+  const actions = useActions({
+    libraryId, run, say,
+    setItems, setSelection, setLibraries, setLibraryId,
+    setScanning, setScanProgress, setTagging, setRevealed,
+    setPendingNew, setVersion,
+  });
 
   const value = useMemo(() => ({
     libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
+    total, pendingNew,
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
-    setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setNameLike, setTagFilter, setSelection,
+    setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
+    refreshTags, refreshCount,
     setOcclusionWithReset: (next) => {
       setRevealed(new Set());
       setOcclusion(next);
@@ -373,8 +303,9 @@ export function StoreProvider({ children }) {
     restore, rememberScroll,
     loadMore, actions, say,
   }), [libraries, libraryId, folders, folder, folderSearch, items, hasMore, loading,
-    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, nameLike,
+    scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
+    total, pendingNew, refreshTags, refreshCount,
     rememberScroll,
     loadMore, actions, say]);
 

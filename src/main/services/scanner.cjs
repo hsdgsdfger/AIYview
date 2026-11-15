@@ -50,14 +50,17 @@ function registerScanIpc(broadcast) {
     }
   });
 
-  handle('scan:watch-stop', ({ libraryId }) => {
-    const watcher = state.watchers.get(libraryId);
-    if (watcher) {
-      watcher.close();
-      state.watchers.delete(libraryId);
-    }
-    return true;
-  });
+  handle('scan:watch-stop', ({ libraryId }) => stopWatch(libraryId));
+}
+
+/** 停掉某个库的文件监听（移除图库时必须调，否则 chokidar 永不回收） */
+function stopWatch(libraryId) {
+  const watcher = state.watchers.get(libraryId);
+  if (watcher) {
+    watcher.close();
+    state.watchers.delete(libraryId);
+  }
+  return true;
 }
 
 /** 增量监听：文件变化防抖后重扫对应库 */
@@ -92,4 +95,4 @@ function watchLibrary(libraryId, rootAbs, broadcast) {
   state.watchers.set(libraryId, watcher);
 }
 
-module.exports = { registerScanIpc, watchLibrary };
+module.exports = { registerScanIpc, watchLibrary, stopWatch };

@@ -58,6 +58,35 @@ fs.rmSync(work, { recursive: true, force: true });
 fs.rmSync(outAsar, { force: true });
 fs.rmSync(`${outAsar}.unpacked`, { recursive: true, force: true });
 
+/**
+ * 解包目录可能被 prune-dist 裁过（例如 better-sqlite3 的 .vcxproj 构建脚本）。
+ * asar extract 遇到「头部标记 unpacked 但磁盘上已不存在」的文件会整体失败，
+ * 所以先按 asar 头部把缺失的解包文件补成空占位（这些只是构建残留，运行不需要）。
+ */
+function fillMissingUnpacked() {
+  const header = asarLib.getRawHeader(targetAsar).header;
+  let filled = 0;
+  const walk = (node, prefix) => {
+    for (const [name, entry] of Object.entries(node.files || {})) {
+      const rel = prefix ? `${prefix}/${name}` : name;
+      if (entry.files) walk(entry, rel);
+      else if (entry.unpacked) {
+        const abs = path.join(targetUnpacked, ...rel.split('/'));
+        if (!fs.existsSync(abs)) {
+          fs.mkdirSync(path.dirname(abs), { recursive: true });
+          fs.writeFileSync(abs, '');
+          filled += 1;
+        }
+      }
+    }
+  };
+  walk(header, '');
+  return filled;
+}
+
+const filled = fillMissingUnpacked();
+if (filled > 0) console.log(`[repack] 解包目录缺失 ${filled} 个文件，已补空占位（prune 残留）`);
+
 console.log('[repack] 解出现有 asar…');
 run(['extract', targetAsar, work]);
 

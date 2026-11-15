@@ -11,6 +11,12 @@ function getDb() {
   if (!instance) {
     const { db } = openDatabase({ dbPath: path.join(app.getPath('userData'), 'index.sqlite') });
     instance = db;
+    // 003 迁移只加了 sort_key 列：老库在这里一次性补齐（已补齐时是 0 次查询，几乎无开销）
+    try {
+      require('../../core/db/imageRepository.cjs').backfillSortKeys(db);
+    } catch {
+      /* 补键失败不影响使用：按名称排序会退回 NULL 优先的旧顺序，下次启动再补 */
+    }
   }
   return instance;
 }

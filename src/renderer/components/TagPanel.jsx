@@ -1,12 +1,41 @@
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { useStore } from '../store.jsx';
 
-/** 标签面板：按标签筛图（E4）+ 给选中图打标签（含中文联想） */
+/** 标签面板：按标签筛图（E4）+ 给选中图打标签（含中文联想）+ 查看/移除单图已有标签 */
 export default function TagPanel({ onClose }) {
-  const { selection, tagFilter, setTagFilter, say } = useStore();
+  const { selection, tagFilter, setTagFilter, say, refreshTags, refreshCount } = useStore();
   const [query, setQuery] = useState('');
   const [suggestions, setSuggestions] = useState([]);
   const [pending, setPending] = useState([]); // 待批量写入的标签名
+  const [imageTags, setImageTags] = useState([]);
+
+  /** 正好选中一张图时，展示它现有的标签（后端 tag:of-image 一直没人用） */
+  const imageId = selection.size === 1 ? [...selection][0] : null;
+
+  const loadImageTags = async () => {
+    if (!imageId) {
+      setImageTags([]);
+      return;
+    }
+    const r = await window.aiyview.tag['of-image']({ imageId });
+    if (r.ok) setImageTags(r.data || []);
+  };
+
+  useEffect(() => {
+    loadImageTags();
+  }, [imageId]);
+
+  const detach = async (tag) => {
+    const r = await window.aiyview.tag.detach({ imageId, tagId: tag.id });
+    if (r.ok) {
+      say(`已移除标签「${tag.nameZh || tag.name}」`);
+      loadImageTags();
+      refreshTags();
+      refreshCount();
+    } else {
+      say(`移除失败: ${r.error}`);
+    }
+  };
 
   const suggest = async (text) => {
     setQuery(text);
@@ -79,6 +108,19 @@ export default function TagPanel({ onClose }) {
               onClick={() => applyFilter({ id: -1, name: query.trim(), custom: true })}
             >用「{query.trim()}」筛选/新建</button>
           )}
+        </div>
+      )}
+
+      {imageId && (
+        <div className="tag-attach">
+          <span className="muted">这张图已有 {imageTags.length} 个标签：</span>
+          {imageTags.length === 0 && <span className="muted">（无）</span>}
+          {imageTags.map((t) => (
+            <span key={t.id} className="tag-chip on" title={t.name}>
+              {t.nameZh || t.name}
+              <button className="icon-btn" title="移除这个标签" onClick={() => detach(t)}>×</button>
+            </span>
+          ))}
         </div>
       )}
 

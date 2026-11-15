@@ -173,6 +173,31 @@ test('listPage name 排序：img_0002 在 img_0010 前（自然序由上层做�
   db.close();
 });
 
+test('listPage name 排序走自然序：img_2 在 img_10 前，跨页稳定', () => {
+  const db = buildDb();
+  const lib = seedLibrary(db);
+  const names = ['img_10.png', 'img_2.png', 'img_1.png', 'img_100.png', 'img_21.png', 'a10/x_3.png'];
+  const scanned = names.map((rel, i) => ({
+    name: rel.split('/').pop(),
+    path: `D:\\pics\\${rel.split('/').join('\\')}`,
+    size: 1,
+    mtimeMs: 1_700_000_000_000 + i,
+  }));
+  imgs.upsertScanned(db, lib.id, scanned, 'D:\\pics');
+
+  const seen = [];
+  let cursor = null;
+  for (;;) {
+    const page = imgs.listPage(db, { libraryId: lib.id, cursor, limit: 2, sort: 'name' });
+    seen.push(...page.items.map((i) => i.rel_path));
+    if (!page.hasMore) break;
+    cursor = page.nextCursor;
+  }
+  assert.deepEqual(seen, ['a10/x_3.png', 'img_1.png', 'img_2.png', 'img_10.png', 'img_21.png', 'img_100.png']);
+  assert.equal(imgs.naturalKey('img_10.png'), 'img_00000010.png');
+  db.close();
+});
+
 test('listPage 全部筛选条件可用且参数化', () => {
   const db = buildDb();
   const lib = seedLibrary(db);

@@ -23,6 +23,7 @@ const { registerTagIpc } = require('./services/tags.cjs');
 const { registerTrashIpc } = require('./services/trash.cjs');
 const { registerSettingsIpc } = require('./services/settings.cjs');
 const { registerTaggerIpc } = require('./services/tagger.cjs');
+const { registerRenameIpc } = require('./services/rename.cjs');
 
 const DEV_SERVER_URL = process.env.VITE_DEV_SERVER_URL || '';
 const SMOKE = process.argv.includes('--smoke');
@@ -78,6 +79,24 @@ function broadcast(event, payload) {
   for (const win of BrowserWindow.getAllWindows()) {
     if (!win.isDestroyed()) win.webContents.send(event, payload);
   }
+}
+
+/**
+ * 回收站过期清理：启动跑一次，之后每小时一次。
+ * 没有这个定时器时 deletions 表里的 pending 记录只进不出（列表靠 expires_at 过滤，界面看不出来）。
+ */
+function startTrashSweep() {
+  const dels = require('../core/db/deletionRepository.cjs');
+  const sweep = () => {
+    try {
+      const removed = dels.sweepExpired(getDb());
+      if (removed) log(`[trash] 清理过期删除记录 ${removed} 条`);
+    } catch (error) {
+      logger.warn('trash', '过期清理失败', { message: error.message });
+    }
+  };
+  sweep();
+  setInterval(sweep, 60 * 60 * 1000).unref();
 }
 
 /**
@@ -153,6 +172,7 @@ function registerIpc() {
   registerTrashIpc();
   registerSettingsIpc();
   registerTaggerIpc(broadcast);
+  registerRenameIpc(broadcast);
 }
 
 function bootstrap() {
@@ -166,6 +186,7 @@ function bootstrap() {
   log("[boot] step: getDb ok");
   ensureMediaRoots(db);
   log("[boot] step: media roots ok");
+  startTrashSweep();
   registerMediaRoot(thumbnailsDir());
   registerMediaProtocol(protocol);
 

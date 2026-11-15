@@ -1,4 +1,4 @@
-import { useMemo, useRef, useState } from 'react';
+import { useEffect, useMemo, useRef, useState } from 'react';
 import { useStore } from '../store.jsx';
 import Icon from './Icon.jsx';
 
@@ -8,18 +8,39 @@ export default function Sidebar() {
     libraries, libraryId, folders, folder, folderSearch, setFolderSearch,
     setFolder, heartOnly, setHeartOnly, untagged, setUntagged, rejectedOnly, setRejectedOnly,
     tagFilter, setTagFilter, tagList, actions, say,
+    ageOnly, setAgeOnly, setAgeMax,
     sidebar, setSidebar, saveSidebar,
   } = useStore();
   const [tagQuery, setTagQuery] = useState('');
+  const [tagHits, setTagHits] = useState(null); // 全库搜索结果（null 表示没在搜）
   const dragRef = useRef(null);
+
+  /** 标签搜索走 tag:search（全字典），原先只在 tag:top 的前 40 个里本地过滤 */
+  useEffect(() => {
+    const q = tagQuery.trim();
+    if (!q) {
+      setTagHits(null);
+      return undefined;
+    }
+    let alive = true;
+    const timer = setTimeout(async () => {
+      const r = await window.aiyview.tag.search({ q, limit: 30 });
+      if (alive && r.ok) setTagHits(r.data);
+    }, 250);
+    return () => {
+      alive = false;
+      clearTimeout(timer);
+    };
+  }, [tagQuery]);
 
   const library = libraries.find((l) => l.id === libraryId) || null;
   const tree = useMemo(() => buildTree(folders, folderSearch.trim()), [folders, folderSearch]);
   const shownTags = useMemo(() => {
-    const q = tagQuery.trim().toLowerCase();
-    if (!q) return tagList.slice(0, 20);
-    return tagList.filter((t) => t.name.toLowerCase().includes(q) || (t.nameZh || '').includes(q)).slice(0, 20);
-  }, [tagList, tagQuery]);
+    if (tagHits) {
+      return tagHits.slice(0, 20).map((t) => ({ ...t, nameZh: t.name_zh, count: t.post_count }));
+    }
+    return tagList.slice(0, 20);
+  }, [tagList, tagHits]);
 
   const collapsed = !!sidebar.collapsed;
   const width = collapsed ? 46 : sidebar.width;
@@ -58,6 +79,18 @@ export default function Sidebar() {
     setUntagged(false);
     setRejectedOnly(false);
     setTagFilter(null);
+    setAgeOnly(null);
+    setAgeMax(null);
+  };
+
+  /** 移除图库：图片文件不动，只从软件里摘掉索引 */
+  const removeLibrary = (lib) => {
+    if (libraries.length <= 1) {
+      say('这是最后一个图库，不能移除（可先添加另一个图库）');
+      return;
+    }
+    const ok = window.confirm(`从软件中移除「${lib.name}」？\n图片文件仍保留在原文件夹，可随时重新添加。`);
+    if (ok) actions.removeLibrary(lib.id);
   };
 
   return (
@@ -129,14 +162,36 @@ export default function Sidebar() {
 
           {library ? (
             <>
+              {libraries.length > 1 && (
+                <div className="lib-switch">
+                  {libraries.map((lib) => (
+                    <button
+                      key={lib.id}
+                      className={`lib-chip ${lib.id === libraryId ? 'active' : ''}`}
+                      title={lib.root_path}
+                      onClick={() => actions.switchLibrary(lib.id)}
+                    >{lib.name}</button>
+                  ))}
+                </div>
+              )}
               <button
-                className={`side-item root ${folder === '' && !heartOnly && !untagged && !rejectedOnly && !tagFilter ? 'active' : ''}`}
+                className={`side-item root ${folder === '' && !heartOnly && !untagged && !rejectedOnly && !tagFilter && ageOnly === null ? 'active' : ''}`}
                 onClick={pickAll}
                 title={library.root_path}
               >
                 <Icon name="folder" size={15} className="side-ico" />
                 <span className="side-text">{library.name}</span>
                 <span className="side-count">{library.image_count || ''}</span>
+                {libraries.length > 1 && (
+                  <span
+                    className="side-x"
+                    title="移除图库（不删文件）"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      removeLibrary(library);
+                    }}
+                  >×</span>
+                )}
               </button>
 
               {tree.map((node) => (
@@ -233,6 +288,27 @@ export default function Sidebar() {
               <span className="side-text">+ 创建「{tagQuery.trim()}」</span>
             </button>
           )}
+        </div>
+
+        <div className="side-group">
+          <div className="side-head"><span>分级</span></div>
+          <button
+            className={`side-item ${ageOnly === null ? 'active' : ''}`}
+            onClick={() => setAgeOnly(null)}
+            title="不按分级过滤"
+          >
+            <span className="side-text">全部分级</span>
+          </button>
+          {[0, 1, 2, 3, 4].map((level) => (
+            <button
+              key={level}
+              className={`side-item ${ageOnly === level ? 'active' : ''}`}
+              onClick={() => setAgeOnly(ageOnly === level ? null : level)}
+              title={`只看 L${level}`}
+            >
+              <span className="side-text">L{level}</span>
+            </button>
+          ))}
         </div>
           </div>
         </>

@@ -126,6 +126,12 @@ function registerThumbIpc() {
     const { cache: cacheStore, scheduler: queue } = ensurePipelines();
     return { cache: cacheStore.stats(), scheduler: queue.stats() };
   });
+  /** 清空缩略图缓存（界面「缓存」里手动点，清完下次浏览会重新生成） */
+  handle('thumb:cache-clear', async () => {
+    const { cache: cacheStore } = ensurePipelines();
+    const removed = await cacheStore.clearAll();
+    return { removed, cache: cacheStore.stats() };
+  });
 }
 
 module.exports = { registerThumbIpc, getThumbnails, SIZES };

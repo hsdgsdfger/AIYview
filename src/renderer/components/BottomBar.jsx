@@ -3,15 +3,16 @@ import { createPortal } from 'react-dom';
 import { useStore } from '../store.jsx';
 import TagPanel from './TagPanel.jsx';
 import ShortcutPanel from './ShortcutPanel.jsx';
+import { TrashPanel, PromptsPanel, CachePanel, ScalePanel, RenamePanel } from './BottomPanels.jsx';
 import Icon from './Icon.jsx';
 
 /**
- * 底栏：左状态 / 中遮挡三态 / 右打标 + 设置。
- * 「最近删除、标签、提示词库、快捷键、日志」都收进右下角设置里。
+ * 底栏：左状态 / 右打标 + 设置。
+ * 设置里收：最近删除、标签、提示词库、批量重命名、标签字典、缩略图缓存、界面缩放、快捷键、日志、主题。
  */
 export default function BottomBar() {
-  const { selection, actions, tagging, status } = useStore();
-  const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | null
+  const { selection, actions, tagging, status, say } = useStore();
+  const [panel, setPanel] = useState(null); // 'trash' | 'prompts' | 'tags' | 'shortcuts' | 'cache' | 'scale' | 'rename'
   const [settingsOpen, setSettingsOpen] = useState(false);
   const settingsRef = useRef(null);
 
@@ -31,11 +32,40 @@ export default function BottomBar() {
     setPanel(name);
   };
 
+  /** 导入标签字典：不选文件时用打标模型目录里的 selected_tags.csv */
+  const importDictionary = async () => {
+    setSettingsOpen(false);
+    const r = await window.aiyview.tag['import-dictionary']({});
+    if (r && r.ok) {
+      say(`标签字典已导入：新增 ${r.data.inserted || 0}，更新 ${r.data.updated || 0}`);
+      actions.refresh();
+    } else {
+      say(`导入标签字典失败：${(r && r.error) || '未知错误'}`);
+    }
+  };
+
+  /** 导入任意 CSV（带文件对话框） */
+  const importCsv = async () => {
+    setSettingsOpen(false);
+    const r = await window.aiyview.tag['pick-csv']({});
+    if (!r || !r.ok) {
+      say(`导入失败：${(r && r.error) || '未知错误'}`);
+      return;
+    }
+    if (r.data.canceled) return;
+    say(`CSV 已导入：新增 ${r.data.inserted || 0}，更新 ${r.data.updated || 0}`);
+    actions.refresh();
+  };
+
   return (
     <>
       {panel === 'tags' && <TagPanel onClose={() => setPanel(null)} />}
       {panel === 'shortcuts' && <ShortcutPanel onClose={() => setPanel(null)} />}
-      {panel && panel !== 'tags' && panel !== 'shortcuts' && <Panel name={panel} onClose={() => setPanel(null)} />}
+      {panel === 'prompts' && <PromptsPanel onClose={() => setPanel(null)} />}
+      {panel === 'cache' && <CachePanel onClose={() => setPanel(null)} />}
+      {panel === 'scale' && <ScalePanel onClose={() => setPanel(null)} />}
+      {panel === 'rename' && <RenamePanel onClose={() => setPanel(null)} />}
+      {panel === 'trash' && <TrashPanel onClose={() => setPanel(null)} />}
 
       <footer className="statusbar">
         <div className="sb-left">
@@ -68,17 +98,44 @@ export default function BottomBar() {
                 <button onClick={() => open('tags')}>
                   <Icon name="tag" size={14} />
                   <span>标签</span>
+                  <em>含移除单图标签</em>
                 </button>
                 <button onClick={() => open('prompts')}>
                   <Icon name="tag" size={14} />
                   <span>提示词库</span>
+                  <em>可编辑/删除</em>
                 </button>
+                <button onClick={() => open('rename')}>
+                  <Icon name="sort" size={14} />
+                  <span>批量重命名</span>
+                  <em>{selection.size > 0 ? `已选 ${selection.size} 张` : '先选图'}</em>
+                </button>
+                <div className="settings-sep" />
+                <button onClick={importDictionary}>
+                  <Icon name="tag" size={14} />
+                  <span>导入标签字典</span>
+                  <em>模型目录 CSV</em>
+                </button>
+                <button onClick={importCsv}>
+                  <Icon name="folder-plus" size={14} />
+                  <span>导入标签 CSV</span>
+                  <em>自选文件</em>
+                </button>
+                <button onClick={() => open('cache')}>
+                  <Icon name="refresh" size={14} />
+                  <span>缩略图缓存</span>
+                  <em>查看/清理</em>
+                </button>
+                <button onClick={() => open('scale')}>
+                  <Icon name="panel-expand" size={14} />
+                  <span>界面缩放</span>
+                </button>
+                <div className="settings-sep" />
                 <button onClick={() => open('shortcuts')}>
                   <Icon name="sort" size={14} />
                   <span>快捷键</span>
                   <em>打分/评级/标废/删除</em>
                 </button>
-                <div className="settings-sep" />
                 <button
                   onClick={async () => {
                     const r = await window.aiyview.app['log-open']();
@@ -109,67 +166,5 @@ export default function BottomBar() {
         </div>
       </footer>
     </>
-  );
-}
-
-function Panel({ name, onClose }) {
-  const { say } = useStore();
-  const [rows, setRows] = useState([]);
-  const [search, setSearch] = useState('');
-  const [list, setList] = useState([]);
-
-  useEffect(() => {
-    let alive = true;
-    (async () => {
-      if (name === 'trash') {
-        const r = await window.aiyview.delete.list();
-        if (alive && r.ok) setRows(r.data);
-      } else {
-        const r = await window.aiyview.prompt.list({ limit: 100, search: search || undefined });
-        if (alive && r.ok) setList(r.data.items);
-      }
-    })();
-    return () => { alive = false; };
-  }, [name, search]);
-
-  return (
-    <div className="bottom-panel">
-      <div className="bp-head">
-        <span className="side-title">{name === 'trash' ? '最近删除（12 小时内可撤回）' : '提示词库'}</span>
-        {name === 'prompts' && (
-          <input className="input" placeholder="搜提示词/标题/模型…" value={search} onChange={(e) => setSearch(e.target.value)} />
-        )}
-        <button className="icon-btn" onClick={onClose}>✕</button>
-      </div>
-
-      {name === 'trash' ? (
-        rows.length === 0 ? <p className="muted">空。删除的图会出现在这里。</p> : rows.map((r) => (
-          <div className="bp-row" key={r.id}>
-            <span className="bp-path" title={r.abs_path}>{r.rel_path}</span>
-            <button
-              className="btn"
-              onClick={async () => {
-                const res = await window.aiyview.delete.restore({ id: r.id });
-                say(res.ok ? `已还原 ${r.rel_path}` : `还原失败: ${res.error}`);
-                const refreshed = await window.aiyview.delete.list();
-                if (refreshed.ok) setRows(refreshed.data);
-              }}
-            >撤回</button>
-          </div>
-        ))
-      ) : list.length === 0 ? <p className="muted">空。在查看器里点「存入提示词库」。</p> : list.map((p) => (
-        <div className="bp-row" key={p.id}>
-          <span className="bp-path" title={p.positive}>{p.title || (p.positive || '').slice(0, 60)}</span>
-          <span className="muted">{p.model}</span>
-          <button
-            className="btn ghost"
-            onClick={() => {
-              navigator.clipboard.writeText(p.positive || '');
-              say('已复制正向提示词');
-            }}
-          >复制</button>
-        </div>
-      ))}
-    </div>
   );
 }
