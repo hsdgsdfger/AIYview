@@ -13,6 +13,7 @@ export default function Viewer({ item, onClose, onNav }) {
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [mode, setMode] = useState('fit');   // 'fit' 适应窗口 | 'actual' 1:1 原始像素
   const [peek, setPeek] = useState(false);   // 按住空格：临时按原图看（松开还原）
+  const [sideOpen, setSideOpen] = useState(true); // 右侧提示词栏展开/收起（Tab）
   const [info, setInfo] = useState(null);
   const [prompt, setPrompt] = useState(null);
   const [showParams, setShowParams] = useState(false);
@@ -44,6 +45,12 @@ export default function Viewer({ item, onClose, onNav }) {
       if (e.key === '-') { setScale((s) => Math.max(0.1, s / 1.25)); return; }
 
       if (isTypingTarget(e.target)) return;
+      // Tab：收起/展开右侧提示词栏，看大图时把可视区让出来
+      if (e.key === 'Tab') {
+        e.preventDefault();
+        setSideOpen((v) => !v);
+        return;
+      }
       // 空格：按住看原图（1:1），松开回原来的模式
       if (e.code === 'Space' || e.key === ' ') {
         e.preventDefault();
@@ -165,46 +172,56 @@ export default function Viewer({ item, onClose, onNav }) {
         <span className="vn-arrow">›</span>
       </button>
 
-      <div className="viewer-side" style={{ width: promptWidth, flex: `0 0 ${promptWidth}px` }}>
-        <div className="viewer-head">
-          <span className="viewer-name" title={item.rel_path}>{item.file_name}</span>
-          <button className="icon-btn" onClick={onClose}>✕</button>
-        </div>
+      {/* 提示词栏开关：Tab 或这个按钮，收起时整块让给画面 */}
+      <button
+        className="viewer-side-toggle"
+        style={{ right: sideOpen ? `${promptWidth + 8}px` : '10px' }}
+        title={sideOpen ? '收起提示词栏（Tab）' : '展开提示词栏（Tab）'}
+        onClick={() => setSideOpen((v) => !v)}
+      >{sideOpen ? '»' : '«'}</button>
 
-        <div className="viewer-actions">
-          <span className="viewer-hearts">
-            <Hearts
-              value={item.heart || 0}
-              size={17}
-              onChange={(n) => actions.setMarks([item.id], { heart: n })}
-            />
+      {sideOpen && (
+        <div className="viewer-side" style={{ width: promptWidth, flex: `0 0 ${promptWidth}px` }}>
+          <div className="viewer-head">
+            <span className="viewer-name" title={item.rel_path}>{item.file_name}</span>
+            <button className="icon-btn" onClick={onClose}>✕</button>
+          </div>
+
+          <div className="viewer-actions">
+            <span className="viewer-hearts">
+              <Hearts
+                value={item.heart || 0}
+                size={17}
+                onChange={(n) => actions.setMarks([item.id], { heart: n })}
+              />
+              <button
+                className="btn ghost tiny"
+                title="清除心数"
+                onClick={() => actions.setMarks([item.id], { heart: 0 })}
+              >清除</button>
+            </span>
             <button
-              className="btn ghost tiny"
-              title="清除心数"
-              onClick={() => actions.setMarks([item.id], { heart: 0 })}
-            >清除</button>
-          </span>
-          <button
-            className={`btn ${item.rejected ? 'danger' : 'ghost'}`}
-            onClick={() => actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 })}
-          >{item.rejected ? '取消废标' : '标废'}</button>
-        </div>
+              className={`btn ${item.rejected ? 'danger' : 'ghost'}`}
+              onClick={() => actions.setMarks([item.id], { rejected: item.rejected ? 0 : 1 })}
+            >{item.rejected ? '取消废标' : '标废'}</button>
+          </div>
 
-        <div className="viewer-age">
-          <span className="side-title">分级</span>
-          {[0, 1, 2, 3, 4].map((level) => (
-            <button
-              key={level}
-              className={`btn ghost ${item.ageLevel === level ? 'primary' : ''}`}
-              onClick={() => actions.setAge([item.id], item.ageLevel === level ? null : level)}
-            >L{level}</button>
-          ))}
-          {item.ageLevel == null && <span className="muted">未判定</span>}
-        </div>
+          <div className="viewer-age">
+            <span className="side-title">分级</span>
+            {[0, 1, 2, 3, 4].map((level) => (
+              <button
+                key={level}
+                className={`btn ghost ${item.ageLevel === level ? 'primary' : ''}`}
+                onClick={() => actions.setAge([item.id], item.ageLevel === level ? null : level)}
+              >L{level}</button>
+            ))}
+            {item.ageLevel == null && <span className="muted">未判定</span>}
+          </div>
 
-        <PromptPanel prompt={prompt} showParams={showParams} setShowParams={setShowParams} />
-        {info && <div className="viewer-meta muted">{info.ext} · {(info.size_bytes / 1024).toFixed(0)}KB · {info.width || '?'}×{info.height || '?'}</div>}
-      </div>
+          <PromptPanel prompt={prompt} showParams={showParams} setShowParams={setShowParams} />
+          {info && <div className="viewer-meta muted">{info.ext} · {(info.size_bytes / 1024).toFixed(0)}KB · {info.width || '?'}×{info.height || '?'}</div>}
+        </div>
+      )}
     </div>
   );
 }

@@ -627,6 +627,25 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 /* 1:1 原始像素 / 按住空格看原图：不压到窗口，保持真实尺寸 */
 .viewer-stage.actual { cursor: grab; }
 .viewer-stage img.actual { max-width: none; max-height: none; }
+/* 提示词栏开关（Tab 同效） */
+.viewer-side-toggle {
+  position: absolute;
+  top: 10px;
+  z-index: 4;
+  width: 26px;
+  height: 26px;
+  display: grid;
+  place-items: center;
+  padding: 0;
+  border-radius: 7px;
+  border: 1px solid rgba(255, 255, 255, 0.18);
+  background: rgba(24, 27, 33, 0.72);
+  color: #cfd4dc;
+  font-size: 13px;
+  cursor: pointer;
+  transition: right 0.12s ease, color 0.12s ease, border-color 0.12s ease;
+}
+.viewer-side-toggle:hover { color: #fff; border-color: rgba(255, 255, 255, 0.45); }
 .viewer-side {
   width: 310px;
   flex: 0 0 310px;

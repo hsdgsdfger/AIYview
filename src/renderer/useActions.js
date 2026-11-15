@@ -5,11 +5,35 @@ import { useMemo } from 'react';
  * 从 store.jsx 拆出来，便于单文件行数达标；依赖通过参数注入，不直接 import store。
  */
 export function useActions({
-  libraryId, run, say,
+  libraryId, run, say, itemsRef,
   setItems, setSelection, setLibraries, setLibraryId,
   setScanning, setScanProgress, setTagging, setRevealed,
   refreshList,
 }) {
+  /** 撤销栈：只记「标记类」改动（心数 / 废标 / 分级），删除不进栈 */
+  const undoStack = [];
+  const MAX_UNDO = 30;
+
+  /** 快照只取本次真正会改的字段，避免「撤销心数」顺手把分级也覆盖掉 */
+  const snapshot = (ids, fields) => {
+    const list = (itemsRef && itemsRef.current && itemsRef.current.items) || [];
+    return ids
+      .map((id) => list.find((it) => it.id === id))
+      .filter(Boolean)
+      .map((it) => {
+        const row = { id: it.id };
+        for (const f of fields) row[f] = it[f];
+        return row;
+      });
+  };
+
+  const pushUndo = (label, ids, fields) => {
+    const before = snapshot(ids, fields);
+    if (before.length === 0) return;
+    undoStack.push({ label, before, fields });
+    if (undoStack.length > MAX_UNDO) undoStack.shift();
+  };
+
   return useMemo(() => ({
     /** 添加文件夹：系统目录选择框 → 注册（同路径幂等）→ 自动扫描 */
     async addFolder() {
@@ -63,6 +87,7 @@ export function useActions({
       say('已移除图库（图片文件仍在原文件夹）');
     },
     async setMarks(ids, patch) {
+      pushUndo('标记', ids, Object.keys(patch));
       const res = await run(window.aiyview.image.marks({ ids, ...patch }), '标记');
       if (res) {
         setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ...patch } : it)));
@@ -70,9 +95,46 @@ export function useActions({
       }
     },
     async setAge(ids, level) {
+      pushUndo('分级', ids, ['ageLevel', 'ageSource']);
       await run(window.aiyview.image.age({ ids, level, source: 'manual' }), '分级');
       setItems((prev) => prev.map((it) => (ids.includes(it.id) ? { ...it, ageLevel: level, ageSource: 'manual' } : it)));
       // 分级也不重排
+    },
+    /** Ctrl+Z：把最近一次标记 / 分级改回原值（删图不在此列，回收站那头管） */
+    async undo() {
+      const entry = undoStack.pop();
+      if (!entry) {
+        say('没有可撤销的操作');
+        return false;
+      }
+      const fields = entry.fields || [];
+      for (const b of entry.before) {
+        if (fields.includes('heart') || fields.includes('rejected')) {
+          const marks = { ids: [b.id] };
+          if (fields.includes('heart')) marks.heart = b.heart;
+          if (fields.includes('rejected')) marks.rejected = b.rejected;
+          await window.aiyview.image.marks(marks).catch(() => {});
+        }
+        if (fields.includes('ageLevel')) {
+          await window.aiyview.image
+            .age({ ids: [b.id], level: b.ageLevel, source: b.ageLevel == null ? 'none' : (b.ageSource || 'manual') })
+            .catch(() => {});
+        }
+      }
+      setItems((prev) => prev.map((it) => {
+        const b = entry.before.find((x) => x.id === it.id);
+        if (!b) return it;
+        const next = { ...it };
+        if (fields.includes('heart')) next.heart = b.heart;
+        if (fields.includes('rejected')) next.rejected = b.rejected;
+        if (fields.includes('ageLevel')) {
+          next.ageLevel = b.ageLevel;
+          next.ageSource = b.ageLevel == null ? 'none' : (b.ageSource || 'manual');
+        }
+        return next;
+      }));
+      say(`已撤销「${entry.label}」${entry.before.length > 1 ? `（${entry.before.length} 张）` : ''}`);
+      return true;
     },
     async trash(ids) {
       const res = await run(window.aiyview.delete.trash({ ids }), '删除');

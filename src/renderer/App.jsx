@@ -1,5 +1,6 @@
-import { useCallback, useMemo, useState } from 'react';
+import { useCallback, useEffect, useMemo, useState } from 'react';
 import { StoreProvider, useStore } from './store.jsx';
+import { isTypingTarget } from './shortcuts.js';
 import TopBar from './components/TopBar.jsx';
 import Sidebar from './components/Sidebar.jsx';
 import ImageArea from './components/ImageArea.jsx';
@@ -15,8 +16,21 @@ export default function App() {
 }
 
 function Shell() {
-  const { items, status, occlusion, revealed } = useStore();
+  const { items, status, occlusion, revealed, actions } = useStore();
   const [viewerId, setViewerId] = useState(null);
+
+  /* Ctrl+Z 撤销最近一次标记 / 分级（输入框里不抢键） */
+  useEffect(() => {
+    const onKey = (e) => {
+      if (!(e.ctrlKey || e.metaKey) || e.shiftKey) return;
+      if (String(e.key).toLowerCase() !== 'z') return;
+      if (isTypingTarget(e.target)) return;
+      e.preventDefault();
+      actions.undo();
+    };
+    window.addEventListener('keydown', onKey);
+    return () => window.removeEventListener('keydown', onKey);
+  }, [actions]);
 
   const viewerItem = useMemo(
     () => (viewerId != null ? items.find((it) => it.id === viewerId) : null),

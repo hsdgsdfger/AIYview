@@ -334,7 +334,7 @@ export function StoreProvider({ children }) {
   }, [refreshCount, refreshTags, markRefresh, refreshList]);
 
   const actions = useActions({
-    libraryId, run, say,
+    libraryId, run, say, itemsRef: stateRef,
     setItems, setSelection, setLibraries, setLibraryId,
     setScanning, setScanProgress, setTagging, setRevealed,
     setPendingNew, setVersion, markRefresh, refreshList,
