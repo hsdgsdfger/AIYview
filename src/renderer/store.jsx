@@ -48,6 +48,8 @@ export function StoreProvider({ children }) {
   const [pendingNew, setPendingNew] = useState(0);
   /** 悬停即编辑：鼠标停在缩略图上时，操作条和快捷键就作用于它（可在设置里关掉） */
   const [hoverEdit, setHoverEditState] = useState(true);
+  /** 大图查看器右侧提示词栏宽度（设置里用滑块调） */
+  const [promptWidth, setPromptWidthState] = useState(310);
 
   const stateRef = useRef({});
   stateRef.current = {
@@ -146,6 +148,7 @@ export function StoreProvider({ children }) {
       if (p.sidebar && typeof p.sidebar === 'object') setSidebar((prev) => ({ ...prev, ...p.sidebar }));
       if (p.win) setMaximized(Boolean(p.win.maximized));
       if (typeof p.hoverEdit === 'boolean') setHoverEditState(p.hoverEdit);
+      if (Number(p.promptWidth) >= 240 && Number(p.promptWidth) <= 620) setPromptWidthState(Number(p.promptWidth));
 
       const v = p.view && typeof p.view === 'object' ? p.view : null;
       if (v) {
@@ -352,6 +355,11 @@ export function StoreProvider({ children }) {
     scanning, scanProgress, columns, sort, heartOnly, untagged, rejectedOnly, ageMax, ageOnly, nameLike,
     tagFilter, tagList, selection, occlusion, sidebar, revealed, tagging, status, version, maximized,
     total, pendingNew, hoverEdit, setHoverEdit,
+    promptWidth,
+    setPromptWidth: (w) => {
+      setPromptWidthState(w);
+      window.aiyview.settings.set({ key: 'promptWidth', value: w });
+    },
     setLibraryId, setFolder, setFolderSearch, setColumns, setSort,
     shortcuts, setShortcut, resetShortcuts,
     setHeartOnly, setUntagged, setRejectedOnly, setAgeMax, setAgeOnly, setNameLike, setTagFilter, setSelection,
@@ -370,6 +378,7 @@ export function StoreProvider({ children }) {
     tagFilter, tagList, selection, occlusion, sidebar, shortcuts, restore, revealed, tagging, status, version, maximized,
     total, pendingNew, refreshTags, refreshCount,
     hoverEdit, setHoverEdit,
+    promptWidth,
     rememberScroll,
     loadMore, actions, say]);
 

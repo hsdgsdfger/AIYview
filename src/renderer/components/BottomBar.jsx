@@ -3,7 +3,7 @@ import { createPortal } from 'react-dom';
 import { useStore } from '../store.jsx';
 import TagPanel from './TagPanel.jsx';
 import ShortcutPanel from './ShortcutPanel.jsx';
-import { TrashPanel, PromptsPanel, CachePanel, ScalePanel, RenamePanel } from './BottomPanels.jsx';
+import { TrashPanel, PromptsPanel, CachePanel, ScalePanel, RenamePanel, LayoutPanel } from './BottomPanels.jsx';
 import Icon from './Icon.jsx';
 
 /**
@@ -64,6 +64,7 @@ export default function BottomBar() {
       {panel === 'prompts' && <PromptsPanel onClose={() => setPanel(null)} />}
       {panel === 'cache' && <CachePanel onClose={() => setPanel(null)} />}
       {panel === 'scale' && <ScalePanel onClose={() => setPanel(null)} />}
+      {panel === 'layout' && <LayoutPanel onClose={() => setPanel(null)} />}
       {panel === 'rename' && <RenamePanel onClose={() => setPanel(null)} />}
       {panel === 'trash' && <TrashPanel onClose={() => setPanel(null)} />}
 
@@ -129,6 +130,22 @@ export default function BottomBar() {
                 <button onClick={() => open('scale')}>
                   <Icon name="panel-expand" size={14} />
                   <span>界面缩放</span>
+                </button>
+                <button onClick={() => open('layout')}>
+                  <Icon name="panel-collapse" size={14} />
+                  <span>界面布局</span>
+                  <em>滑块调宽度</em>
+                </button>
+                <button
+                  onClick={() => {
+                    setSettingsOpen(false);
+                    actions.scanCurrent();
+                  }}
+                  title="扫描当前图库并立刻刷新列表"
+                >
+                  <Icon name="refresh" size={14} />
+                  <span>扫描并刷新</span>
+                  <em>F5</em>
                 </button>
                 <button
                   onClick={() => {

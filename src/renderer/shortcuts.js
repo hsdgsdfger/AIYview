@@ -19,6 +19,7 @@ export const SHORTCUT_ACTIONS = [
   { id: 'age4', group: '评级', label: '评级 L4', def: 'alt+5' },
   { id: 'rejected', group: '标记', label: '标废 / 取消标废', def: 'x' },
   { id: 'trash', group: '标记', label: '删除（移入回收站）', def: 'delete' },
+  { id: 'refresh', group: '图库', label: '扫描并刷新列表', def: 'f5' },
 ];
 
 export const DEFAULT_SHORTCUTS = Object.fromEntries(SHORTCUT_ACTIONS.map((a) => [a.id, a.def]));
@@ -46,6 +47,7 @@ const KEY_LABELS = {
   space: 'Space',
   escape: 'Esc',
   enter: 'Enter',
+  f5: 'F5',
   arrowup: '↑',
   arrowdown: '↓',
   arrowleft: '←',

@@ -211,6 +211,69 @@ export function CachePanel({ onClose }) {
   );
 }
 
+/** 界面布局：左栏宽度、查看器提示词栏宽度，都用滑块调，松手写盘 */
+export function LayoutPanel({ onClose }) {
+  const { sidebar, setSidebar, saveSidebar, promptWidth, setPromptWidth } = useStore();
+  const [sideW, setSideW] = useState(sidebar.width);
+  const [promptW, setPromptWLocal] = useState(promptWidth);
+
+  const liveSide = (w) => {
+    setSideW(w);
+    setSidebar((prev) => ({ ...prev, width: w, collapsed: false }));
+  };
+  const livePrompt = (w) => {
+    setPromptWLocal(w);
+    setPromptWidth(w);
+  };
+
+  return (
+    <PanelShell title="界面布局" onClose={onClose}>
+      <p className="muted">拖动滑块调整位置，松手即保存。</p>
+
+      <div className="bp-row">
+        <span className="bp-path">侧边栏宽度（主界面可视区域）</span>
+        <span className="bp-path muted">{sideW}px</span>
+      </div>
+      <input
+        className="layout-range"
+        type="range"
+        min="150"
+        max="460"
+        step="2"
+        value={sideW}
+        onChange={(e) => liveSide(Number(e.target.value))}
+        onMouseUp={() => saveSidebar({ width: sideW, collapsed: false })}
+        onKeyUp={() => saveSidebar({ width: sideW, collapsed: false })}
+      />
+
+      <div className="bp-row">
+        <span className="bp-path">查看器提示词栏宽度</span>
+        <span className="bp-path muted">{promptW}px</span>
+      </div>
+      <input
+        className="layout-range"
+        type="range"
+        min="240"
+        max="620"
+        step="2"
+        value={promptW}
+        onChange={(e) => livePrompt(Number(e.target.value))}
+      />
+
+      <div className="bp-actions">
+        <button
+          className="btn ghost"
+          onClick={() => {
+            liveSide(208);
+            saveSidebar({ width: 208, collapsed: false });
+            livePrompt(310);
+          }}
+        >恢复默认</button>
+      </div>
+    </PanelShell>
+  );
+}
+
 /** 界面缩放：即时生效并写进 settings.uiScale */
 export function ScalePanel({ onClose }) {
   const { say } = useStore();

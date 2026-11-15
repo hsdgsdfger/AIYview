@@ -1,52 +1,35 @@
 import { useStore } from '../store.jsx';
-import Icon from './Icon.jsx';
 
-/** 顶栏：品牌 + 添加文件夹 + 布局/面板 + 设置 + 窗口控制（对应原版 AIYview 头部） */
+/**
+ * 顶栏：品牌（点太极图标收起/展开侧边栏）+ 图片总数 + 窗口控制。
+ * 添加文件夹、刷新、主题等都收进底栏设置里；刷新默认 F5。
+ */
 export default function TopBar() {
-  const {
-    actions, maximized, say, pendingNew, total, scanning,
-  } = useStore();
+  const { maximized, total, sidebar, setSidebar, saveSidebar } = useStore();
+  const collapsed = !!sidebar.collapsed;
+
+  const toggle = () => {
+    const next = { width: sidebar.width, collapsed: !collapsed };
+    setSidebar(next);
+    saveSidebar(next);
+  };
 
   return (
     <header className="topbar">
       <div className="brand">
-        <span className="brand-mark">☯</span>
+        <button
+          className="brand-mark"
+          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
+          onClick={toggle}
+        ><Taiji collapsed={collapsed} /></button>
         <span className="brand-text">AIY<em>view</em></span>
       </div>
-
-      <button className="add-folder" onClick={() => actions.addFolder()} title="选择文件夹并加入图库">
-        <Icon name="folder-plus" size={15} />
-        <span>添加文件夹</span>
-      </button>
 
       <div className="topbar-center">
         {total > 0 && <span className="tb-total" title="当前筛选下的图片总数">共 {total} 张</span>}
       </div>
 
       <div className="topbar-right">
-        {pendingNew > 0 && (
-          <button
-            className="tb-new"
-            title="后台发现图库有新变化，点一下刷新列表"
-            onClick={() => actions.refresh()}
-          >{pendingNew > 1 ? '有新变化' : '有新图'} · 刷新</button>
-        )}
-        <button
-          className="round-btn"
-          title="亮/暗主题"
-          onClick={() => {
-            const el = document.documentElement;
-            const light = el.getAttribute('data-theme') === 'light';
-            el.setAttribute('data-theme', light ? 'dark' : 'light');
-            window.aiyview.settings.set({ key: 'theme', value: light ? 'dark' : 'light' });
-          }}
-        ><Icon name="gear" size={15} /></button>
-        <button
-          className="round-btn"
-          title={scanning ? '扫描中…' : '重新扫描当前图库'}
-          onClick={() => actions.scanCurrent()}
-        ><Icon name="refresh" size={15} className={scanning ? 'spin-icon' : ''} /></button>
-
         <div className="win-controls">
           <button onClick={() => window.aiyview.window.minimize()} title="最小化">–</button>
           <button onClick={() => window.aiyview.window.maximize()} title={maximized ? '还原' : '最大化'}>
@@ -55,7 +38,20 @@ export default function TopBar() {
           <button className="close" onClick={() => window.aiyview.window.close()} title="关闭">✕</button>
         </div>
       </div>
-      {scanning && <span className="sr-status" onClick={() => say('扫描进行中')}>扫描中…</span>}
     </header>
+  );
+}
+
+/** 太极图标：侧边栏展开时左半白、收起时左半黑（点它切换） */
+function Taiji({ collapsed }) {
+  const left = collapsed ? '#0d0f13' : '#ffffff';
+  const right = collapsed ? '#ffffff' : '#0d0f13';
+  return (
+    <svg className="taiji" viewBox="0 0 20 20" width="22" height="22" aria-hidden="true">
+      <circle cx="10" cy="10" r="9" fill={left} stroke="currentColor" strokeWidth="1" opacity="0.95" />
+      <path d="M10 1 A9 9 0 0 1 10 19 L10 1 Z" fill={right} />
+      <circle cx="5.5" cy="10" r="1.7" fill={right} />
+      <circle cx="14.5" cy="10" r="1.7" fill={left} />
+    </svg>
   );
 }

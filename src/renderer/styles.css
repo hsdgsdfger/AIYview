@@ -972,3 +972,28 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
 .bp-actions { display: flex; gap: 8px; padding: 6px 0; }
 /* 查看器左右翻页栏：各占视图 1/8，上半=上一张，下半=下一张 */
 .viewer-nav { flex: 0 0 12.5vw; display: flex; flex-direction: column; }.vn-half { flex: 1; border: 0; background: transparent; color: rgba(255,255,255,.45); font-size: 14px; cursor: pointer; display: flex; align-items: center; justify-content: center; transition: background .15s, color .15s; }.vn-half:hover { background: rgba(255,255,255,.07); color: #fff; }
+
+/* 顶栏太极图标（点它收起/展开侧边栏） */
+.brand-mark {
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  width: 24px;
+  height: 24px;
+  padding: 0;
+  border: 0;
+  border-radius: 50%;
+  background: transparent;
+  color: var(--line);
+  cursor: pointer;
+}
+.brand-mark:hover { opacity: 0.82; }
+.taiji { display: block; }
+
+/* 设置 → 界面布局 的滑块 */
+.layout-range {
+  width: 100%;
+  margin: 2px 0 12px;
+  accent-color: var(--accent);
+  height: 18px;
+}

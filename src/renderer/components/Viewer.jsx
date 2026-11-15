@@ -8,7 +8,7 @@ import { actionForCombo, comboOf, isTypingTarget } from '../shortcuts.js';
  * 一级 = 正负提示词；小箭头展开二级参数区（D3/D3b/D3c，默认收起）。
  */
 export default function Viewer({ item, onClose, onNav }) {
-  const { actions, shortcuts } = useStore();
+  const { actions, shortcuts, promptWidth } = useStore();
   const [scale, setScale] = useState(1);
   const [offset, setOffset] = useState({ x: 0, y: 0 });
   const [info, setInfo] = useState(null);
@@ -104,7 +104,7 @@ export default function Viewer({ item, onClose, onNav }) {
         <button className="vn-half" title="下一张（↓ / →）" onClick={() => onNav(1)}>▼</button>
       </div>
 
-      <div className="viewer-side">
+      <div className="viewer-side" style={{ width: promptWidth, flex: `0 0 ${promptWidth}px` }}>
         <div className="viewer-head">
           <span className="viewer-name" title={item.rel_path}>{item.file_name}</span>
           <button className="icon-btn" onClick={onClose}>✕</button>

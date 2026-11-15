@@ -67,12 +67,6 @@ export default function Sidebar() {
     window.addEventListener('mouseup', onUp);
   };
 
-  const toggleCollapsed = () => {
-    const next = { width: sidebar.width, collapsed: !collapsed };
-    setSidebar(next);
-    saveSidebar(next);
-  };
-
   const pickAll = () => {
     setFolder('');
     setHeartOnly(false);
@@ -95,14 +89,11 @@ export default function Sidebar() {
 
   return (
     <aside className={`sidebar ${collapsed ? 'collapsed' : ''}`} style={{ width, flex: `0 0 ${width}px` }}>
-      <div className="sb-top">
-        <button
-          className="icon-btn sb-collapse"
-          title={collapsed ? '展开侧边栏' : '收起侧边栏'}
-          onClick={toggleCollapsed}
-        ><Icon name={collapsed ? 'panel-expand' : 'panel-collapse'} size={15} /></button>
-        {!collapsed && <span className="sb-top-title">图库</span>}
-      </div>
+      {!collapsed && (
+        <div className="sb-top">
+          <span className="sb-top-title">图库</span>
+        </div>
+      )}
 
       {collapsed ? (
         <div className="side-rail">

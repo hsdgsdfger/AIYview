@@ -188,9 +188,16 @@ export default function ImageArea({ onOpenViewer }) {
       const combo = comboOf(e);
       if (!combo) return;
       const { ids, items: rows, shortcuts: keys, actions: act } = hotRef.current;
-      if (!ids || ids.length === 0) return;
       const action = actionForCombo(keys, combo);
       if (!action) return;
+
+      // F5 等图库动作不需要选中目标，先处理掉
+      if (action === 'refresh') {
+        e.preventDefault();
+        act.scanCurrent();
+        return;
+      }
+      if (!ids || ids.length === 0) return;
 
       if (action.startsWith('heart')) {
         e.preventDefault();
@@ -223,7 +230,7 @@ export default function ImageArea({ onOpenViewer }) {
       <section className="content">
         <div className="empty-hint">
           <Icon name="folder-plus" size={34} />
-          <p>还没有图库。点左上「添加文件夹」选一个目录（如 D:\ImageTags\output），会自动扫描入库。</p>
+          <p>还没有图库。点左栏「文件夹」右边的 ＋ 图标选一个目录（如 D:\ImageTags\output），会自动扫描入库。</p>
         </div>
       </section>
     );
