@@ -5,7 +5,7 @@ import Icon from './Icon.jsx';
 /** 左栏：搜索文件夹 / 文件夹树 / 收藏图片 / 标签区；宽度可拖拽，可收成图标条 */
 export default function Sidebar() {
   const {
-    libraries, libraryId, folders, folder, folderSearch, setFolderSearch,
+    libraries, libraryId, folders, folder,
     setFolder, heartOnly, setHeartOnly, untagged, setUntagged, rejectedOnly, setRejectedOnly,
     tagFilter, setTagFilter, tagList, actions, say,
     ageOnly, setAgeOnly, setAgeMax,
@@ -13,7 +13,21 @@ export default function Sidebar() {
   } = useStore();
   const [tagQuery, setTagQuery] = useState('');
   const [tagHits, setTagHits] = useState(null); // 全库搜索结果（null 表示没在搜）
+  /** 三个分组的折叠状态（默认全展开），写进 settings.sideGroups */
+  const [openGroups, setOpenGroups] = useState({ folders: true, age: true, tags: true });
   const dragRef = useRef(null);
+
+  useEffect(() => {
+    window.aiyview.settings.get({ key: 'sideGroups' }).then((r) => {
+      if (r.ok && r.data && typeof r.data === 'object') setOpenGroups((prev) => ({ ...prev, ...r.data }));
+    });
+  }, []);
+
+  const toggleGroup = (key) => {
+    const next = { ...openGroups, [key]: !openGroups[key] };
+    setOpenGroups(next);
+    window.aiyview.settings.set({ key: 'sideGroups', value: next });
+  };
 
   /** 标签搜索走 tag:search（全字典），原先只在 tag:top 的前 40 个里本地过滤 */
   useEffect(() => {
@@ -34,7 +48,7 @@ export default function Sidebar() {
   }, [tagQuery]);
 
   const library = libraries.find((l) => l.id === libraryId) || null;
-  const tree = useMemo(() => buildTree(folders, folderSearch.trim()), [folders, folderSearch]);
+  const tree = useMemo(() => buildTree(folders), [folders]);
   const shownTags = useMemo(() => {
     if (tagHits) {
       return tagHits.slice(0, 20).map((t) => ({ ...t, nameZh: t.name_zh, count: t.post_count }));
@@ -127,25 +141,20 @@ export default function Sidebar() {
         </div>
       ) : (
         <>
-          <div className="side-search">
-            <Icon name="search" size={14} className="side-search-icon" />
-            <input
-              className="side-search-input"
-              placeholder="搜索文件夹..."
-              value={folderSearch}
-              onChange={(e) => setFolderSearch(e.target.value)}
-            />
-          </div>
           <div className="side-scroll">
         <div className="side-group">
-          <div className="side-head">
-            <span>文件夹</span>
-            <button className="icon-btn" title="添加文件夹" onClick={() => actions.addFolder()}>
-              <Icon name="folder-plus" size={15} />
-            </button>
-          </div>
+          <button className="side-head as-btn" onClick={() => toggleGroup('folders')} title="折叠/展开文件夹">
+            <span className="side-head-title">
+              <span className="tree-caret">{openGroups.folders ? '▾' : '▸'}</span>文件夹
+            </span>
+            <span
+              className="icon-btn"
+              title="添加文件夹"
+              onClick={(e) => { e.stopPropagation(); actions.addFolder(); }}
+            ><Icon name="folder-plus" size={15} /></span>
+          </button>
 
-          {library ? (
+          {openGroups.folders && (library ? (
             <>
               {libraries.length > 1 && (
                 <div className="lib-switch">
@@ -194,10 +203,12 @@ export default function Sidebar() {
               ))}
             </>
           ) : (
-            <div className="side-empty">还没有图库，点上方「添加文件夹」</div>
-          )}
+            <div className="side-empty">还没有图库，点上方「文件夹」右侧的 ＋ 图标</div>
+          ))}
 
-          <button
+          {openGroups.folders && (
+            <>
+              <button
             className={`side-item ${heartOnly ? 'active' : ''}`}
             onClick={() => {
               setHeartOnly(!heartOnly);
@@ -219,18 +230,53 @@ export default function Sidebar() {
             <Icon name="x" size={15} className="side-ico" />
             <span className="side-text">废标</span>
           </button>
+            </>
+          )}
         </div>
 
         <div className="side-group">
-          <div className="side-head">
-            <span>标签</span>
-            <button
+          <button className="side-head as-btn" onClick={() => toggleGroup('age')} title="折叠/展开分级">
+            <span className="side-head-title">
+              <span className="tree-caret">{openGroups.age ? '▾' : '▸'}</span>分级
+            </span>
+          </button>
+          {openGroups.age && (
+            <>
+              <button
+                className={`side-item ${ageOnly === null ? 'active' : ''}`}
+                onClick={() => setAgeOnly(null)}
+                title="不按分级过滤"
+              >
+                <span className="side-text">全部分级</span>
+              </button>
+              {[0, 1, 2, 3, 4].map((level) => (
+                <button
+                  key={level}
+                  className={`side-item ${ageOnly === level ? 'active' : ''}`}
+                  onClick={() => setAgeOnly(ageOnly === level ? null : level)}
+                  title={`只看 L${level}`}
+                >
+                  <span className="side-text">L{level}</span>
+                </button>
+              ))}
+            </>
+          )}
+        </div>
+
+        <div className="side-group">
+          <button className="side-head as-btn" onClick={() => toggleGroup('tags')} title="折叠/展开标签">
+            <span className="side-head-title">
+              <span className="tree-caret">{openGroups.tags ? '▾' : '▸'}</span>标签
+            </span>
+            <span
               className="icon-btn"
               title="打标（只处理无元数据的图，可中断续跑）"
-              onClick={() => actions.startTagging()}
-            ><Icon name="tag" size={15} /></button>
-          </div>
+              onClick={(e) => { e.stopPropagation(); actions.startTagging(); }}
+            ><Icon name="tag" size={15} /></span>
+          </button>
 
+          {openGroups.tags && (
+            <>
           <div className="side-search inner">
             <Icon name="search" size={13} className="side-search-icon" />
             <input
@@ -273,27 +319,8 @@ export default function Sidebar() {
               <span className="side-text">+ 创建「{tagQuery.trim()}」</span>
             </button>
           )}
-        </div>
-
-        <div className="side-group">
-          <div className="side-head"><span>分级</span></div>
-          <button
-            className={`side-item ${ageOnly === null ? 'active' : ''}`}
-            onClick={() => setAgeOnly(null)}
-            title="不按分级过滤"
-          >
-            <span className="side-text">全部分级</span>
-          </button>
-          {[0, 1, 2, 3, 4].map((level) => (
-            <button
-              key={level}
-              className={`side-item ${ageOnly === level ? 'active' : ''}`}
-              onClick={() => setAgeOnly(ageOnly === level ? null : level)}
-              title={`只看 L${level}`}
-            >
-              <span className="side-text">L{level}</span>
-            </button>
-          ))}
+            </>
+          )}
         </div>
           </div>
         </>

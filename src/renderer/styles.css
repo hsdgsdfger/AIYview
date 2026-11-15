@@ -1005,3 +1005,23 @@ body.resizing, body.resizing * { cursor: col-resize !important; user-select: non
   margin-left: 8px;
   color: var(--line);
 }
+
+/* 左栏分组标题做成可折叠按钮 */
+.side-head.as-btn {
+  width: 100%;
+  background: transparent;
+  border: 0;
+  cursor: pointer;
+  font: inherit;
+  font-size: 13px;
+  color: var(--muted);
+  text-align: left;
+  justify-content: space-between;
+}
+.side-head.as-btn:hover { color: var(--text); }
+.side-head-title { display: inline-flex; align-items: center; gap: 5px; }
+
+/* 查看器左右翻页栏：默认隐藏，鼠标进入该条区域才显形（整条仍可点） */
+.vn-half { opacity: 0; transition: opacity .18s ease, background .15s, color .15s; }
+.viewer-nav:hover .vn-half { opacity: 1; }
+.vn-half:focus-visible { opacity: 1; }
