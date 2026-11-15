@@ -1,6 +1,6 @@
 {
   "name": "aiyview",
-  "version": "0.1.0",
+  "version": "0.1.2",
   "private": true,
   "author": "AIYview",
   "description": "本地 ComfyUI 图片浏览器 + 分级筛选器",

@@ -18,6 +18,12 @@ const PATTERNS = [
 ];
 const SKIP_EXT = new Set(['.png', '.jpg', '.jpeg', '.webp', '.gif', '.ico', '.woff', '.woff2', '.ttf', '.onnx', '.sqlite', '.node', '.dll', '.exe', '.zip']);
 
+// 明确安全的字面量：本脚本自己的规则定义、以及断言里用来验证路径策略的假路径
+const ALLOW = [
+  'scripts/scan-secrets.mjs',
+  'tests/unit/netPolicy.test.mjs',
+];
+
 const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' })
   .split('\n')
   .filter(Boolean)
@@ -25,6 +31,7 @@ const tracked = execFileSync('git', ['ls-files'], { cwd: ROOT, encoding: 'utf8' 
 
 const hits = [];
 for (const rel of tracked) {
+  if (ALLOW.includes(rel)) continue;
   const abs = path.join(ROOT, rel);
   let text;
   try {

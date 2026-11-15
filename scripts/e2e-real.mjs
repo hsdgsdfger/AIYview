@@ -1,7 +1,7 @@
 /**
  * 真库端到端验收：注册 → 扫描入库 → 游标分页 → 缩略图 → 提示词读取 → 筛选
  * 直接用 Node 侧核心模块（不走 Electron），指标与需求文档的性能目标对照。
- * 用法: node scripts/e2e-real.mjs "D:\\ImageTags\\output"
+ * 用法: node scripts/e2e-real.mjs "<图库根目录绝对路径>"
  */
 import fs from 'node:fs';
 import path from 'node:path';
@@ -17,7 +17,11 @@ const imgs = require(path.join(root, 'src/core/db/imageRepository.cjs'));
 const { scanAndIndex } = require(path.join(root, 'src/core/scan/scanPipeline.cjs'));
 const meta = require(path.join(root, 'src/core/legacy/metadata.cjs'));
 
-const libRoot = process.argv[2] || 'D:\\ImageTags\\output';
+const libRoot = process.argv[2];
+if (!libRoot) {
+  console.error('用法: node scripts/e2e-real.mjs "<图库根目录绝对路径>"');
+  process.exit(2);
+}
 const tmpDb = path.join(root, '.native', 'e2e-real.sqlite');
 fs.mkdirSync(path.dirname(tmpDb), { recursive: true });
 try {
